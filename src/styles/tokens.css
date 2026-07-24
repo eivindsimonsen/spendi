@@ -1,0 +1,46 @@
+/*
+  Design tokens — the single source of truth for color/spacing/type values.
+  Breakpoints aren't CSS variables (custom properties can't be read inside
+  @media feature queries) so they're documented here instead: mobile-first
+  base styles, then progressively enhance with min-width: 640px (tablet)
+  and min-width: 1024px (desktop).
+*/
+:root {
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #7c3aed;
+  --color-primary-contrast: #ffffff;
+
+  --color-background: #f9fafb;
+  --color-surface: #ffffff;
+
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9ca3af;
+
+  --color-border: #e5e7eb;
+
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+  --color-warning: #d97706;
+
+  --font-sans:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.12);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}
