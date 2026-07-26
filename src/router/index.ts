@@ -18,6 +18,11 @@ const router = createRouter({
       component: () => import('@/views/OverviewView.vue'),
     },
     {
+      path: '/income',
+      name: 'income',
+      component: () => import('@/views/IncomeView.vue'),
+    },
+    {
       path: '/recurring-costs',
       name: 'recurring-costs',
       component: () => import('@/views/RecurringCostsView.vue'),
@@ -28,6 +33,11 @@ const router = createRouter({
       component: () => import('@/views/HistoryView.vue'),
     },
     {
+      path: '/statistics',
+      name: 'statistics',
+      component: () => import('@/views/StatisticsView.vue'),
+    },
+    {
       path: '/friends',
       name: 'friends',
       component: () => import('@/views/FriendsView.vue'),
@@ -36,6 +46,11 @@ const router = createRouter({
       path: '/savings',
       name: 'savings',
       component: () => import('@/views/SavingsView.vue'),
+    },
+    {
+      path: '/plans/new',
+      name: 'create-plan',
+      component: () => import('@/views/CreatePlanView.vue'),
     },
     {
       path: '/add-expense',

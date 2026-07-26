@@ -6,6 +6,8 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { calculateRequiredMonthlySavings } from '@/core/savings-calculator'
 import { formatCurrencyNOK } from '@/core/format'
+import { SAVINGS_THEMES } from '@/core/savings-themes'
+import type { SavingsGoalTheme } from '@/types/database.types'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 
 const { currentPlan } = useCurrentPlan()
@@ -24,6 +26,7 @@ watch(
 const goalName = ref('')
 const goalTargetAmount = ref<number | null>(null)
 const goalTargetDate = ref('')
+const goalTheme = ref<SavingsGoalTheme>('other')
 
 const {
   loading: creatingGoal,
@@ -38,10 +41,12 @@ const {
     name: goalName.value.trim(),
     targetAmount: goalTargetAmount.value,
     targetDate: goalTargetDate.value,
+    theme: goalTheme.value,
   })
   goalName.value = ''
   goalTargetAmount.value = null
   goalTargetDate.value = ''
+  goalTheme.value = 'other'
 })
 
 function progressPercent(goalId: string, targetAmount: number): number {
@@ -105,6 +110,14 @@ function startContributing(goalId: string) {
           <input v-model="goalName" type="text" placeholder="F.eks. Ferie til Italia" required />
         </label>
         <label class="form-field">
+          Tema
+          <select v-model="goalTheme">
+            <option v-for="(theme, key) in SAVINGS_THEMES" :key="key" :value="key">
+              {{ theme.icon }} {{ theme.label }}
+            </option>
+          </select>
+        </label>
+        <label class="form-field">
           Målbeløp (kr)
           <input v-model.number="goalTargetAmount" type="number" min="0" step="1" required />
         </label>
@@ -124,6 +137,13 @@ function startContributing(goalId: string) {
     </section>
 
     <section v-for="goal in savingsStore.goals" :key="goal.id" class="card">
+      <div
+        class="savings-cover"
+        :style="{ background: SAVINGS_THEMES[goal.theme as SavingsGoalTheme].gradient }"
+      >
+        <span class="savings-cover-icon">{{ SAVINGS_THEMES[goal.theme as SavingsGoalTheme].icon }}</span>
+      </div>
+
       <h2>{{ goal.name }}</h2>
       <p class="card-subtitle">Måldato: {{ goal.target_date }}</p>
 
@@ -172,6 +192,19 @@ function startContributing(goalId: string) {
 </template>
 
 <style scoped>
+.savings-cover {
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) var(--space-4);
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.savings-cover-icon {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
 .savings-progress-track {
   margin-bottom: var(--space-2);
 }

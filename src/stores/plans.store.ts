@@ -44,6 +44,21 @@ export const usePlansStore = defineStore('plans', () => {
     return newPlanId
   }
 
+  async function createIndividualPlan(name: string) {
+    const newPlanId = await plansService.createIndividual(name)
+    await loadMyPlans()
+    setActivePlan(newPlanId)
+    return newPlanId
+  }
+
+  async function deletePlan(id: string) {
+    if (myPlans.value.length <= 1) {
+      throw new Error('Du kan ikke slette din siste plan.')
+    }
+    await plansService.delete(id)
+    await loadMyPlans()
+  }
+
   async function loadPendingInvites(profileId: string) {
     pendingInvites.value = await planMembersService.listPendingInvitesForProfile(profileId)
 
@@ -71,6 +86,8 @@ export const usePlansStore = defineStore('plans', () => {
     loadMyPlans,
     setActivePlan,
     proposeSharedPlan,
+    createIndividualPlan,
+    deletePlan,
     loadPendingInvites,
     respondToInvite,
   }

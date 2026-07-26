@@ -26,4 +26,16 @@ export const plansService = {
     if (error) throw error
     return data
   },
+
+  // Returns the new individual plan's id.
+  async createIndividual(name: string) {
+    const { data, error } = await supabase.rpc('create_individual_plan', { p_name: name })
+    if (error) throw error
+    return data
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase.from('plans').delete().eq('id', id)
+    if (error) throw error
+  },
 }

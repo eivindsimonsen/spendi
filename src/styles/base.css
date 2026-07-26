@@ -272,3 +272,12 @@ button {
   color: var(--color-danger);
   font-size: 0.9rem;
 }
+
+/* A plain-text, low-emphasis non-destructive action (e.g. "Rediger", "Avbryt"). */
+.button-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}

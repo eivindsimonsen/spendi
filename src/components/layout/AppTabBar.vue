@@ -56,6 +56,30 @@ function goTo(path: string) {
           <small>Gjelder kun denne lønningsperioden</small>
         </span>
       </button>
+      <button type="button" class="add-action-choice" @click="goTo('/savings')">
+        <span class="add-action-icon" aria-hidden="true">🎯</span>
+        <span class="add-action-text">
+          <strong>Opprett spareplan</strong>
+          <small>F.eks. ferie, bryllup eller bolig</small>
+        </span>
+      </button>
+
+      <p class="add-action-divider">Ny plan</p>
+
+      <button type="button" class="add-action-choice" @click="goTo('/plans/new')">
+        <span class="add-action-icon" aria-hidden="true">📋</span>
+        <span class="add-action-text">
+          <strong>Opprett individuell plan</strong>
+          <small>Et eget budsjett, kun for deg</small>
+        </span>
+      </button>
+      <button type="button" class="add-action-choice" @click="goTo('/friends')">
+        <span class="add-action-icon" aria-hidden="true">🤝</span>
+        <span class="add-action-text">
+          <strong>Opprett plan med en venn</strong>
+          <small>En delt Spendiplan, f.eks. med samboeren</small>
+        </span>
+      </button>
     </div>
   </BaseModal>
 </template>
@@ -206,5 +230,14 @@ function goTo(path: string) {
 .add-action-text small {
   color: var(--color-text-muted);
   font-size: 0.8rem;
+}
+
+.add-action-divider {
+  margin: var(--space-1) 0 calc(var(--space-2) * -1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-subtle);
 }
 </style>

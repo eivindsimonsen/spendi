@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { useIncomeStore } from '@/stores/income.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 
-const props = defineProps<{ planId: string }>()
+const props = defineProps<{ planId: string; profileId: string }>()
 const emit = defineEmits<{ saved: [] }>()
 
 const incomeStore = useIncomeStore()
@@ -19,7 +19,7 @@ watch(
 )
 
 const { loading, error, run } = useAsyncAction(async () => {
-  await incomeStore.save({ planId: props.planId, payday: payday.value })
+  await incomeStore.save({ planId: props.planId, profileId: props.profileId, payday: payday.value })
   emit('saved')
 })
 </script>
@@ -32,7 +32,7 @@ const { loading, error, run } = useAsyncAction(async () => {
     </label>
     <p class="form-hint">
       Vi bruker denne til å regne budsjettperioden din fra lønningsdag til lønningsdag, i stedet
-      for kalendermåned.
+      for kalendermåned. I en delt Spendiplan setter hver person sin egen lønningsdag.
     </p>
     <p v-if="error" class="form-error">{{ error }}</p>
     <button type="submit" class="button-primary" :disabled="loading">

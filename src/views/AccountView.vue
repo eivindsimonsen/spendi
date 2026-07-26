@@ -22,15 +22,7 @@ async function handleSignOut() {
     </section>
 
     <section class="card">
-      <router-link to="/history" class="account-link">📊 Historikk og statistikk</router-link>
-    </section>
-
-    <section class="card">
       <router-link to="/friends" class="account-link">👥 Venner og Spendiplan</router-link>
-    </section>
-
-    <section class="card">
-      <router-link to="/savings" class="account-link">🎯 Sparemål</router-link>
     </section>
 
     <section class="card">

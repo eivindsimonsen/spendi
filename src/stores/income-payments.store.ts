@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import {
   incomePaymentsService,
   type CreateIncomePaymentInput,
+  type UpdateIncomePaymentInput,
 } from '@/services/income-payments.service'
 import type { Database } from '@/types/database.types'
 
@@ -12,9 +13,19 @@ export const useIncomePaymentsStore = defineStore('incomePayments', () => {
   const currentPeriodPayments = ref<IncomePayment[]>([])
   const loaded = ref(false)
 
+  // Wider-window history for the statistics page, kept separate from
+  // currentPeriodPayments so loading one doesn't clobber the other.
+  const historyPayments = ref<IncomePayment[]>([])
+  const historyLoaded = ref(false)
+
   async function loadForPeriod(planId: string, fromDate: string, toDate: string) {
     currentPeriodPayments.value = await incomePaymentsService.listInRange(planId, fromDate, toDate)
     loaded.value = true
+  }
+
+  async function loadHistory(planId: string, fromDate: string, toDate: string) {
+    historyPayments.value = await incomePaymentsService.listInRange(planId, fromDate, toDate)
+    historyLoaded.value = true
   }
 
   async function create(input: CreateIncomePaymentInput) {
@@ -23,5 +34,28 @@ export const useIncomePaymentsStore = defineStore('incomePayments', () => {
     return created
   }
 
-  return { currentPeriodPayments, loaded, loadForPeriod, create }
+  async function update(id: string, changes: UpdateIncomePaymentInput) {
+    const updated = await incomePaymentsService.update(id, changes)
+    currentPeriodPayments.value = currentPeriodPayments.value.map((payment) =>
+      payment.id === id ? updated : payment,
+    )
+    return updated
+  }
+
+  async function remove(id: string) {
+    await incomePaymentsService.delete(id)
+    currentPeriodPayments.value = currentPeriodPayments.value.filter((payment) => payment.id !== id)
+  }
+
+  return {
+    currentPeriodPayments,
+    loaded,
+    historyPayments,
+    historyLoaded,
+    loadForPeriod,
+    loadHistory,
+    create,
+    update,
+    remove,
+  }
 })

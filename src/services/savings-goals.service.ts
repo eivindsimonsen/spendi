@@ -1,10 +1,12 @@
 import { supabase } from '@/lib/supabase'
+import type { SavingsGoalTheme } from '@/types/database.types'
 
 export interface CreateSavingsGoalInput {
   planId: string
   name: string
   targetAmount: number
   targetDate: string
+  theme: SavingsGoalTheme
 }
 
 export const savingsGoalsService = {
@@ -26,6 +28,7 @@ export const savingsGoalsService = {
         name: input.name,
         target_amount: input.targetAmount,
         target_date: input.targetDate,
+        theme: input.theme,
       })
       .select()
       .single()

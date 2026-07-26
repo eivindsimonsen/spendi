@@ -12,6 +12,7 @@
 export type PlanType = 'individual' | 'shared'
 export type PlanMemberRole = 'owner' | 'member'
 export type PlanMemberStatus = 'pending' | 'accepted' | 'declined'
+export type SavingsGoalTheme = 'vacation' | 'wedding' | 'home' | 'car' | 'education' | 'other'
 
 export interface Database {
   public: {
@@ -254,6 +255,7 @@ export interface Database {
         Row: {
           id: string
           plan_id: string
+          profile_id: string
           payday: number
           created_at: string
           updated_at: string
@@ -261,6 +263,7 @@ export interface Database {
         Insert: {
           id?: string
           plan_id: string
+          profile_id: string
           payday?: number
           created_at?: string
           updated_at?: string
@@ -268,6 +271,7 @@ export interface Database {
         Update: {
           id?: string
           plan_id?: string
+          profile_id?: string
           payday?: number
           created_at?: string
           updated_at?: string
@@ -281,6 +285,7 @@ export interface Database {
           amount: number
           received_on: string
           note: string | null
+          income_type: string
           created_by: string
           created_at: string
         }
@@ -290,6 +295,7 @@ export interface Database {
           amount: number
           received_on: string
           note?: string | null
+          income_type?: string
           created_by: string
           created_at?: string
         }
@@ -299,6 +305,7 @@ export interface Database {
           amount?: number
           received_on?: string
           note?: string | null
+          income_type?: string
           created_by?: string
           created_at?: string
         }
@@ -311,6 +318,7 @@ export interface Database {
           name: string
           target_amount: number
           target_date: string
+          theme: string
           created_at: string
         }
         Insert: {
@@ -319,6 +327,7 @@ export interface Database {
           name: string
           target_amount: number
           target_date: string
+          theme?: string
           created_at?: string
         }
         Update: {
@@ -327,6 +336,7 @@ export interface Database {
           name?: string
           target_amount?: number
           target_date?: string
+          theme?: string
           created_at?: string
         }
         Relationships: []
@@ -374,6 +384,10 @@ export interface Database {
       }
       propose_shared_plan: {
         Args: { p_name: string; p_invitee_id: string }
+        Returns: string
+      }
+      create_individual_plan: {
+        Args: { p_name: string }
         Returns: string
       }
     }
