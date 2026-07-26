@@ -17,9 +17,19 @@ body,
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-background);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
+  /*
+    Soft gradient mesh (built only from the existing primary color at low
+    opacity, no new hues) so translucent glass panels have something with
+    depth to sit on top of, rather than a flat fill.
+  */
+  background:
+    radial-gradient(circle at 12% 8%, rgba(139, 92, 246, 0.16), transparent 55%),
+    radial-gradient(circle at 88% 0%, rgba(139, 92, 246, 0.12), transparent 50%),
+    radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.1), transparent 60%),
+    var(--color-background);
+  background-attachment: fixed;
 }
 
 h1,
@@ -33,8 +43,30 @@ select {
   font-family: inherit;
 }
 
+h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 var(--space-3);
+}
+
 button {
   cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /*
@@ -61,10 +93,13 @@ button {
 .form-field textarea {
   font-size: 1rem;
   padding: var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
-  background-color: var(--color-surface);
+  background-color: var(--glass-bg-strong);
   color: var(--color-text);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .form-field-checkbox {
@@ -80,6 +115,7 @@ button {
 .form-field textarea:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
 }
 
 .form-error {
@@ -98,19 +134,34 @@ button {
   padding: var(--space-3) var(--space-4);
   border: none;
   border-radius: var(--radius-md);
-  background-color: var(--color-primary);
+  background: linear-gradient(180deg, var(--color-primary-hover) 0%, var(--color-primary) 100%);
   color: var(--color-primary-contrast);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 4px 14px rgba(139, 92, 246, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
 .button-primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 6px 18px rgba(139, 92, 246, 0.4);
+}
+
+.button-primary:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .button-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Narrow, centered single-column page — used by sign-in/sign-up today. */
@@ -141,12 +192,31 @@ button {
   margin-bottom: var(--space-4);
 }
 
+/*
+  Glass panel: translucent + blurred so the gradient mesh behind it shows
+  through, a soft border, and a bright top rim (::before) to suggest a
+  refractive glass edge catching light -- the "liquid glass" material
+  used for every section on every page.
+*/
 .card {
-  background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-glass));
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
 }
 
 .card-subtitle {
@@ -166,6 +236,11 @@ button {
   color: var(--color-text);
   text-decoration: none;
   font-weight: 600;
+  transition: opacity 0.15s ease;
+}
+
+.account-link:active {
+  opacity: 0.6;
 }
 
 /*
@@ -173,15 +248,17 @@ button {
   spend-vs-budget (Overview) and savings-goal progress.
 */
 .progress-track {
-  background-color: var(--color-background);
+  background-color: rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-sm);
   height: 8px;
   overflow: hidden;
 }
 
 .progress-fill {
-  background-color: var(--color-primary);
+  background: linear-gradient(90deg, var(--color-primary-hover), var(--color-primary));
   height: 100%;
+  transition: width 0.3s ease;
 }
 
 .progress-fill-danger {

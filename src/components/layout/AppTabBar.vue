@@ -63,15 +63,22 @@ function goTo(path: string) {
 <style scoped>
 .tab-bar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  /* Floats clear of the edges (and the home-indicator safe area) rather
+     than sitting flush against the screen edge. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-3));
+  left: var(--space-4);
+  right: var(--space-4);
+  max-width: 400px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background-color: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--blur-glass));
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
   z-index: 50;
 }
 
@@ -81,10 +88,11 @@ function goTo(path: string) {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: var(--space-2) 0;
+  padding: var(--space-3) 0;
   text-decoration: none;
   color: var(--color-text-muted);
   font-size: 0.75rem;
+  transition: color 0.15s ease;
 }
 
 .tab-bar-item-active {
@@ -97,23 +105,34 @@ function goTo(path: string) {
 
 .tab-bar-fab {
   position: relative;
-  top: -18px;
+  top: -20px;
   flex-shrink: 0;
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 4px solid var(--color-surface);
-  background-color: var(--color-primary);
+  border: 3px solid var(--glass-highlight);
+  background: linear-gradient(160deg, var(--color-primary-hover) 0%, var(--color-primary) 100%);
   color: var(--color-primary-contrast);
   font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    0 8px 20px rgba(139, 92, 246, 0.45);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .tab-bar-fab:hover {
-  background-color: var(--color-primary-hover);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    0 10px 24px rgba(139, 92, 246, 0.55);
+}
+
+.tab-bar-fab:active {
+  transform: scale(0.94);
 }
 
 .tab-bar-fab-icon {
@@ -160,10 +179,18 @@ function goTo(path: string) {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg-strong);
   text-align: left;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.add-action-choice:active {
+  transform: scale(0.98);
+  background: var(--glass-bg);
 }
 
 .add-action-icon {

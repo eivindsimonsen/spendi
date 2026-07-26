@@ -17,11 +17,12 @@ const auth = useAuthStore()
 <style scoped>
 .app-layout {
   min-height: 100dvh;
-  background-color: var(--color-background);
   color: var(--color-text);
 }
 
 .main-content {
-  padding-bottom: 64px;
+  /* Clears the floating tab bar (its own height + how far it floats off
+     the bottom edge) so the last card in any view isn't hidden behind it. */
+  padding-bottom: 96px;
 }
 </style>
