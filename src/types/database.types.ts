@@ -40,6 +40,7 @@ export interface Database {
           id: string
           name: string
           type: PlanType
+          budget_model: string
           created_by: string
           created_at: string
         }
@@ -47,6 +48,7 @@ export interface Database {
           id?: string
           name: string
           type: PlanType
+          budget_model?: string
           created_by: string
           created_at?: string
         }
@@ -54,6 +56,7 @@ export interface Database {
           id?: string
           name?: string
           type?: PlanType
+          budget_model?: string
           created_by?: string
           created_at?: string
         }
@@ -209,6 +212,27 @@ export interface Database {
           created_by?: string
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      recurring_cost_skips: {
+        Row: {
+          id: string
+          recurring_cost_id: string
+          period_start: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          recurring_cost_id: string
+          period_start: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          recurring_cost_id?: string
+          period_start?: string
+          created_at?: string
         }
         Relationships: []
       }

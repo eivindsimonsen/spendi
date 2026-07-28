@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { plansService } from '@/services/plans.service'
 import { planMembersService, type PlanMemberStatus } from '@/services/plan-members.service'
+import type { BudgetModelId } from '@/core/discretionary-split'
 import type { Database } from '@/types/database.types'
 
 type Plan = Database['public']['Tables']['plans']['Row']
@@ -59,6 +60,12 @@ export const usePlansStore = defineStore('plans', () => {
     await loadMyPlans()
   }
 
+  async function updateBudgetModel(planId: string, budgetModel: BudgetModelId) {
+    const updated = await plansService.updateBudgetModel(planId, budgetModel)
+    myPlans.value = myPlans.value.map((plan) => (plan.id === planId ? updated : plan))
+    return updated
+  }
+
   async function loadPendingInvites(profileId: string) {
     pendingInvites.value = await planMembersService.listPendingInvitesForProfile(profileId)
 
@@ -88,6 +95,7 @@ export const usePlansStore = defineStore('plans', () => {
     proposeSharedPlan,
     createIndividualPlan,
     deletePlan,
+    updateBudgetModel,
     loadPendingInvites,
     respondToInvite,
   }

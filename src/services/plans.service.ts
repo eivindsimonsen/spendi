@@ -38,4 +38,15 @@ export const plansService = {
     const { error } = await supabase.from('plans').delete().eq('id', id)
     if (error) throw error
   },
+
+  async updateBudgetModel(id: string, budgetModel: string) {
+    const { data, error } = await supabase
+      .from('plans')
+      .update({ budget_model: budgetModel })
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
 }

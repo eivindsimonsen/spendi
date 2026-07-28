@@ -34,6 +34,12 @@ export const useTransactionsStore = defineStore('transactions', () => {
     return created
   }
 
+  async function remove(id: string) {
+    await transactionsService.delete(id)
+    recentTransactions.value = recentTransactions.value.filter((tx) => tx.id !== id)
+    history.value = history.value.filter((tx) => tx.id !== id)
+  }
+
   return {
     recentTransactions,
     loaded,
@@ -42,5 +48,6 @@ export const useTransactionsStore = defineStore('transactions', () => {
     loadSince,
     loadHistory,
     create,
+    remove,
   }
 })

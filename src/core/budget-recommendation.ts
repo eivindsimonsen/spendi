@@ -1,6 +1,11 @@
 import type { CalculationResult } from './types/calculation-result'
 import { estimateVariableCost, type DatedAmount } from './variable-cost-estimator'
-import { splitDiscretionaryIncome, type DiscretionarySplit } from './discretionary-split'
+import {
+  splitDiscretionaryIncome,
+  DEFAULT_BUDGET_MODEL,
+  type DiscretionarySplit,
+  type BudgetModelId,
+} from './discretionary-split'
 
 export interface RecurringCostInput {
   id: string
@@ -15,6 +20,10 @@ export interface BudgetLineItem {
   name: string
   categoryId: string
   estimate: CalculationResult<number>
+  // True when skipped for this specific period (e.g. "didn't pay this
+  // one this month") -- still shown so it can be brought back, but
+  // excluded from totalCommitted/remaining/split below.
+  skipped: boolean
 }
 
 export interface BudgetRecommendation {
@@ -84,6 +93,8 @@ export function buildBudgetRecommendation(
   transactionsByCategory: Map<string, DatedAmount[]>,
   lookbackMonths: number,
   referenceDate: Date,
+  budgetModelId: BudgetModelId = DEFAULT_BUDGET_MODEL,
+  skippedRecurringCostIds: ReadonlySet<string> = new Set(),
 ): BudgetRecommendation {
   const income = loggedIncomeResult(loggedIncomeAmount)
 
@@ -97,20 +108,23 @@ export function buildBudgetRecommendation(
       name: cost.name,
       categoryId: cost.categoryId,
       estimate,
+      skipped: skippedRecurringCostIds.has(cost.id),
     }
   })
 
-  const totalCommittedValue = lineItems.reduce((sum, item) => sum + item.estimate.value, 0)
+  const committedItems = lineItems.filter((item) => !item.skipped)
+  const totalCommittedValue = committedItems.reduce((sum, item) => sum + item.estimate.value, 0)
+  const skippedCount = lineItems.length - committedItems.length
 
   const totalCommitted: CalculationResult<number> = {
     value: totalCommittedValue,
     model: 'sum-of-recurring-costs-v1',
-    summary: `Sum av ${lineItems.length} fast${lineItems.length === 1 ? '' : 'e'} kostnad${lineItems.length === 1 ? '' : 'er'}.`,
+    summary: `Sum av ${committedItems.length} fast${committedItems.length === 1 ? '' : 'e'} kostnad${committedItems.length === 1 ? '' : 'er'}${skippedCount ? ` (${skippedCount} hoppet over denne perioden)` : ''}.`,
     steps: [
       {
         label: 'Sum faste kostnader',
-        formula: lineItems.map((item) => item.name).join(' + ') || '0',
-        inputs: lineItems.map((item) => ({
+        formula: committedItems.map((item) => item.name).join(' + ') || '0',
+        inputs: committedItems.map((item) => ({
           label: item.name,
           value: item.estimate.value,
           unit: 'kr',
@@ -139,7 +153,7 @@ export function buildBudgetRecommendation(
     ],
   }
 
-  const split = splitDiscretionaryIncome(remainingValue)
+  const split = splitDiscretionaryIncome(remainingValue, budgetModelId)
 
   return { income, lineItems, totalCommitted, remaining, split }
 }

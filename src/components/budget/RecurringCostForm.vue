@@ -44,7 +44,7 @@ const { loading, error, run } = useAsyncAction(async () => {
     </label>
     <label class="form-field">
       Kategori
-      <CategoryPicker v-model="categoryId" :plan-id="planId" />
+      <CategoryPicker v-model="categoryId" />
     </label>
     <label class="form-field-checkbox">
       <input v-model="isVariable" type="checkbox" />

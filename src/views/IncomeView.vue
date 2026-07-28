@@ -1,80 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { format } from 'date-fns'
+import { ref } from 'vue'
 import { useCurrentPlan } from '@/composables/useCurrentPlan'
-import { useIncomeStore } from '@/stores/income.store'
 import { useIncomePaymentsStore } from '@/stores/income-payments.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
-import { getPayPeriod } from '@/core/pay-schedule'
+import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
 import { formatCurrencyNOK } from '@/core/format'
-import { profilesService } from '@/services/profiles.service'
-import PayScheduleForm from '@/components/budget/PayScheduleForm.vue'
 import type { Database } from '@/types/database.types'
 
 type IncomePayment = Database['public']['Tables']['income_payments']['Row']
-type Profile = Database['public']['Tables']['profiles']['Row']
 
 const INCOME_TYPES = ['Lønn', 'Bonus', 'Gave', 'Annet']
 
 const { currentPlan } = useCurrentPlan()
-const incomeStore = useIncomeStore()
 const incomePaymentsStore = useIncomePaymentsStore()
 const authStore = useAuthStore()
 
-const contributorProfiles = ref(new Map<string, Profile>())
-
-onMounted(() => {
-  if (authStore.profile) {
-    contributorProfiles.value.set(authStore.profile.id, authStore.profile)
-  }
-})
-
-const currentPeriod = computed(() => {
-  if (incomeStore.referencePayday == null) return null
-  return getPayPeriod(incomeStore.referencePayday, new Date())
-})
-
-watch(
-  currentPlan,
-  async (plan) => {
-    if (!plan || !authStore.user) return
-    await incomeStore.load(plan.id, authStore.user.id)
-  },
-  { immediate: true },
-)
-
-watch(
-  currentPeriod,
-  async (period) => {
-    if (!period || !currentPlan.value) return
-    await incomePaymentsStore.loadForPeriod(
-      currentPlan.value.id,
-      format(period.start, 'yyyy-MM-dd'),
-      format(period.end, 'yyyy-MM-dd'),
-    )
-
-    const contributorIds = [
-      ...new Set(incomePaymentsStore.currentPeriodPayments.map((payment) => payment.created_by)),
-    ].filter((id) => !contributorProfiles.value.has(id))
-
-    if (contributorIds.length) {
-      const profiles = await profilesService.listByIds(contributorIds)
-      for (const profile of profiles) {
-        contributorProfiles.value.set(profile.id, profile)
-      }
-    }
-  },
-  { immediate: true },
-)
-
-function contributorName(profileId: string): string {
-  return contributorProfiles.value.get(profileId)?.display_name ?? 'Ukjent'
-}
-
-const periodTotal = computed(() =>
-  incomePaymentsStore.currentPeriodPayments.reduce((sum, payment) => sum + payment.amount, 0),
-)
+const { periodIncomeTotal, memberName } = useBudgetRecommendation()
 
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -142,10 +84,10 @@ async function removePayment(id: string) {
 
     <section class="card">
       <h2>Denne perioden</h2>
-      <p class="income-total">{{ formatCurrencyNOK(periodTotal) }}</p>
+      <p class="income-total">{{ formatCurrencyNOK(periodIncomeTotal) }}</p>
 
       <p v-if="!incomePaymentsStore.currentPeriodPayments.length" class="card-subtitle">
-        Ingen lønn logget for denne perioden ennå.
+        Ingen inntekt logget for denne perioden ennå.
       </p>
       <ul v-else class="income-list">
         <li
@@ -156,7 +98,7 @@ async function removePayment(id: string) {
           <div>
             <p class="income-item-amount">{{ formatCurrencyNOK(payment.amount) }}</p>
             <p class="card-subtitle">
-              {{ payment.income_type }} · {{ contributorName(payment.created_by) }} ·
+              {{ payment.income_type }} · {{ memberName(payment.created_by) }} ·
               {{ payment.received_on }}
             </p>
           </div>
@@ -170,7 +112,7 @@ async function removePayment(id: string) {
       </ul>
 
       <button v-if="!isFormOpen" type="button" class="button-primary" @click="startAdding">
-        Legg til lønn
+        Legg til inntekt
       </button>
 
       <form v-else class="form income-form" @submit.prevent="runSave()">
@@ -196,14 +138,6 @@ async function removePayment(id: string) {
           <button type="button" class="button-link" @click="isFormOpen = false">Avbryt</button>
         </div>
       </form>
-    </section>
-
-    <section class="card">
-      <h2>Lønningsdag</h2>
-      <p class="card-subtitle">
-        Din egen lønningsdag for denne planen. I en delt Spendiplan setter hver person sin egen.
-      </p>
-      <PayScheduleForm v-if="currentPlan && authStore.user" :plan-id="currentPlan.id" :profile-id="authStore.user.id" />
     </section>
   </div>
 </template>

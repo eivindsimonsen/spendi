@@ -67,6 +67,37 @@ describe('buildBudgetRecommendation', () => {
     expect(result.lineItems[0]!.estimate.model).toBe('manual-fallback-no-history')
   })
 
+  it('excludes a skipped recurring cost from totalCommitted/remaining but still lists it', () => {
+    const recurringCosts: RecurringCostInput[] = [
+      { id: 'rent', name: 'Bolig', categoryId: 'cat-housing', amount: 12000, isVariable: false },
+      { id: 'netflix', name: 'Netflix', categoryId: 'cat-sub', amount: 199, isVariable: false },
+    ]
+
+    const result = buildBudgetRecommendation(
+      40000,
+      recurringCosts,
+      new Map(),
+      3,
+      referenceDate,
+      undefined,
+      new Set(['netflix']),
+    )
+
+    expect(result.lineItems).toHaveLength(2)
+    expect(result.lineItems.find((item) => item.recurringCostId === 'netflix')?.skipped).toBe(true)
+    expect(result.lineItems.find((item) => item.recurringCostId === 'rent')?.skipped).toBe(false)
+    expect(result.totalCommitted.value).toBe(12000)
+    expect(result.remaining.value).toBe(28000)
+  })
+
+  it('applies the chosen budget model to the discretionary split', () => {
+    const result = buildBudgetRecommendation(40000, [], new Map(), 3, referenceDate, 'relaxed-70-20-10')
+
+    expect(result.split.fun.value).toBeCloseTo(40000 * 0.7)
+    expect(result.split.savings.value).toBeCloseTo(40000 * 0.2)
+    expect(result.split.unforeseen.value).toBeCloseTo(40000 * 0.1)
+  })
+
   it('clamps the discretionary split to zero when overspent', () => {
     const recurringCosts: RecurringCostInput[] = [
       { id: 'rent', name: 'Bolig', categoryId: 'cat-housing', amount: 50000, isVariable: false },

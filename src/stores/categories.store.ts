@@ -20,10 +20,18 @@ export const useCategoriesStore = defineStore('categories', () => {
     return created
   }
 
+  async function update(id: string, changes: { name?: string; icon?: string }) {
+    const updated = await categoriesService.updateCustom(id, changes)
+    categories.value = categories.value
+      .map((category) => (category.id === id ? updated : category))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    return updated
+  }
+
   async function remove(id: string) {
     await categoriesService.deleteCustom(id)
     categories.value = categories.value.filter((category) => category.id !== id)
   }
 
-  return { categories, loaded, load, createCustom, remove }
+  return { categories, loaded, load, createCustom, update, remove }
 })

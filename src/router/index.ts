@@ -29,6 +29,11 @@ const router = createRouter({
       component: () => import('@/views/IncomeView.vue'),
     },
     {
+      path: '/budget',
+      name: 'budget',
+      component: () => import('@/views/BudgetView.vue'),
+    },
+    {
       path: '/recurring-costs',
       name: 'recurring-costs',
       component: () => import('@/views/RecurringCostsView.vue'),
@@ -67,6 +72,11 @@ const router = createRouter({
       path: '/account',
       name: 'account',
       component: () => import('@/views/AccountView.vue'),
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/views/SettingsView.vue'),
     },
     {
       path: '/sign-in',

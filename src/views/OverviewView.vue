@@ -1,215 +1,40 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { startOfMonth, subMonths, subDays, format } from 'date-fns'
+import { computed, watch } from 'vue'
+import { subMonths, subDays, format } from 'date-fns'
 import { useCurrentPlan } from '@/composables/useCurrentPlan'
 import { usePlansStore } from '@/stores/plans.store'
-import { useAuthStore } from '@/stores/auth.store'
 import { useIncomeStore } from '@/stores/income.store'
-import { useIncomePaymentsStore } from '@/stores/income-payments.store'
-import { useCategoriesStore } from '@/stores/categories.store'
-import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
 import { useSavingsStore } from '@/stores/savings.store'
-import { useCategoryLabel } from '@/composables/useCategoryLabel'
-import { profilesService } from '@/services/profiles.service'
-import { getPayPeriod, getDaysUntilPayday } from '@/core/pay-schedule'
-import { buildBudgetRecommendation, type RecurringCostInput } from '@/core/budget-recommendation'
+import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
 import { sumByMonth } from '@/core/transaction-stats'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
-import type { DatedAmount } from '@/core/variable-cost-estimator'
-import type { SavingsGoalTheme, Database } from '@/types/database.types'
+import type { SavingsGoalTheme } from '@/types/database.types'
 import { formatCurrencyNOK } from '@/core/format'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import PlanPicker from '@/components/budget/PlanPicker.vue'
 
-type Profile = Database['public']['Tables']['profiles']['Row']
-
-const LOOKBACK_MONTHS = 3
 const TREND_MONTHS = 6
-const RECURRING_LINE_ITEMS_COLLAPSED_COUNT = 5
 
 const { currentPlan } = useCurrentPlan()
 const plansStore = usePlansStore()
-const authStore = useAuthStore()
 const incomeStore = useIncomeStore()
-const incomePaymentsStore = useIncomePaymentsStore()
-const categoriesStore = useCategoriesStore()
-const recurringCostsStore = useRecurringCostsStore()
 const transactionsStore = useTransactionsStore()
 const savingsStore = useSavingsStore()
-const { categoryLabel } = useCategoryLabel()
+
+const { currentPeriod, daysUntilPayday, periodIncomeTotal, budgetRecommendation } = useBudgetRecommendation()
 
 watch(
   currentPlan,
   async (plan) => {
-    if (!plan || !authStore.user) return
-    // Fetches enough history for both the variable-cost lookback and the
-    // trend chart below -- they each apply their own, independent window
-    // on top of this one shared fetch.
-    const sinceDate = format(startOfMonth(subMonths(new Date(), TREND_MONTHS)), 'yyyy-MM-dd')
-    await Promise.all([
-      incomeStore.load(plan.id, authStore.user.id),
-      categoriesStore.load(plan.id),
-      recurringCostsStore.load(plan.id),
-      transactionsStore.loadSince(plan.id, sinceDate),
-      savingsStore.load(plan.id),
-    ])
+    if (!plan) return
+    await savingsStore.load(plan.id)
   },
   { immediate: true },
 )
-
-const currentPeriod = computed(() => {
-  if (incomeStore.referencePayday == null) return null
-  return getPayPeriod(incomeStore.referencePayday, new Date())
-})
-
-const daysUntilPayday = computed(() => {
-  if (incomeStore.referencePayday == null) return null
-  return getDaysUntilPayday(incomeStore.referencePayday, new Date())
-})
-
-const planMemberProfiles = ref(new Map<string, Profile>())
-
-watch(
-  currentPeriod,
-  async (period) => {
-    if (!period || !currentPlan.value) return
-    await incomePaymentsStore.loadForPeriod(
-      currentPlan.value.id,
-      format(period.start, 'yyyy-MM-dd'),
-      format(period.end, 'yyyy-MM-dd'),
-    )
-  },
-  { immediate: true },
-)
-
-// Resolves display names for whoever logged income, paid for a
-// transaction, or created a recurring cost, so "who's responsible for
-// this" can be shown without a second query per name -- fires whenever
-// any of those sources picks up a not-yet-seen id.
-watch(
-  () =>
-    [
-      incomePaymentsStore.currentPeriodPayments,
-      transactionsStore.recentTransactions,
-      recurringCostsStore.recurringCosts,
-    ] as const,
-  async ([payments, transactions, recurringCosts]) => {
-    const ids = new Set<string>()
-    for (const payment of payments) ids.add(payment.created_by)
-    for (const tx of transactions) ids.add(tx.paid_by)
-    for (const cost of recurringCosts) ids.add(cost.created_by)
-
-    const missingIds = [...ids].filter((id) => !planMemberProfiles.value.has(id))
-    if (!missingIds.length) return
-
-    const profiles = await profilesService.listByIds(missingIds)
-    for (const profile of profiles) {
-      planMemberProfiles.value.set(profile.id, profile)
-    }
-  },
-  { immediate: true, deep: true },
-)
-
-function memberName(profileId: string): string {
-  return planMemberProfiles.value.get(profileId)?.display_name ?? 'Ukjent'
-}
-
-function recurringCostOwnerName(recurringCostId: string): string {
-  const cost = recurringCostsStore.recurringCosts.find((item) => item.id === recurringCostId)
-  return cost ? memberName(cost.created_by) : 'Ukjent'
-}
 
 function formatShortDate(date: Date): string {
   return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
-}
-
-const periodIncomeTotal = computed(() =>
-  incomePaymentsStore.currentPeriodPayments.reduce((sum, payment) => sum + payment.amount, 0),
-)
-
-const transactionsByCategory = computed(() => {
-  const map = new Map<string, DatedAmount[]>()
-  for (const tx of transactionsStore.recentTransactions) {
-    const existing = map.get(tx.category_id) ?? []
-    existing.push({ amount: tx.amount, occurredOn: tx.occurred_on })
-    map.set(tx.category_id, existing)
-  }
-  return map
-})
-
-const budgetRecommendation = computed(() => {
-  if (!incomePaymentsStore.loaded || periodIncomeTotal.value === 0) return null
-
-  const recurringCostInputs: RecurringCostInput[] = recurringCostsStore.recurringCosts.map((cost) => ({
-    id: cost.id,
-    name: cost.name,
-    categoryId: cost.category_id,
-    amount: cost.amount,
-    isVariable: cost.is_variable,
-  }))
-
-  return buildBudgetRecommendation(
-    periodIncomeTotal.value,
-    recurringCostInputs,
-    transactionsByCategory.value,
-    LOOKBACK_MONTHS,
-    new Date(),
-  )
-})
-
-// Categories already covered by a recurring cost are excluded here --
-// their amount is already accounted for in "Faste utgifter" above, so
-// this is genuinely unplanned/discretionary spending, not a double-count.
-const recurringCostCategoryIds = computed(
-  () => new Set(recurringCostsStore.recurringCosts.map((cost) => cost.category_id)),
-)
-
-const discretionaryTransactionsThisPeriod = computed(() => {
-  const period = currentPeriod.value
-  if (!period) return []
-  return transactionsStore.recentTransactions
-    .filter((tx) => {
-      const occurred = new Date(tx.occurred_on)
-      const inPeriod = occurred >= period.start && occurred < period.end
-      return inPeriod && !recurringCostCategoryIds.value.has(tx.category_id)
-    })
-    .sort((a, b) => b.amount - a.amount)
-})
-
-const showAllDiscretionaryItems = ref(false)
-
-const hasMoreDiscretionaryItems = computed(
-  () => discretionaryTransactionsThisPeriod.value.length > RECURRING_LINE_ITEMS_COLLAPSED_COUNT,
-)
-
-const visibleDiscretionaryTransactions = computed(() =>
-  showAllDiscretionaryItems.value
-    ? discretionaryTransactionsThisPeriod.value
-    : discretionaryTransactionsThisPeriod.value.slice(0, RECURRING_LINE_ITEMS_COLLAPSED_COUNT),
-)
-
-// Biggest costs first, and collapsed behind a "show more" toggle once the
-// plan accumulates enough recurring costs to make the card unwieldy.
-const sortedLineItems = computed(() => {
-  if (!budgetRecommendation.value) return []
-  return [...budgetRecommendation.value.lineItems].sort((a, b) => b.estimate.value - a.estimate.value)
-})
-
-const showAllLineItems = ref(false)
-
-const hasMoreLineItems = computed(
-  () => sortedLineItems.value.length > RECURRING_LINE_ITEMS_COLLAPSED_COUNT,
-)
-
-const visibleLineItems = computed(() =>
-  showAllLineItems.value
-    ? sortedLineItems.value
-    : sortedLineItems.value.slice(0, RECURRING_LINE_ITEMS_COLLAPSED_COUNT),
-)
-
-function categoryIcon(categoryId: string): string {
-  return categoriesStore.categories.find((category) => category.id === categoryId)?.icon ?? ''
 }
 
 // Month-over-month trend, including months with zero spend so the shape
@@ -249,8 +74,18 @@ function trendMonthLabel(month: string): string {
 
 <template>
   <div class="container">
-    <div class="page-header">
-      <h1>Oversikt</h1>
+    <div class="overview-header">
+      <div class="page-header">
+        <h1>Oversikt</h1>
+      </div>
+      <router-link
+        to="/settings"
+        class="settings-gear"
+        :aria-label="!incomeStore.paySchedule ? 'Innstillinger (lønningsdag mangler)' : 'Innstillinger'"
+      >
+        <span aria-hidden="true">⚙️</span>
+        <span v-if="!incomeStore.paySchedule" class="settings-gear-dot" aria-hidden="true" />
+      </router-link>
     </div>
 
     <PlanPicker v-if="plansStore.myPlans.length" />
@@ -261,7 +96,8 @@ function trendMonthLabel(month: string): string {
 
     <section v-else-if="!incomeStore.paySchedule" class="card income-hero">
       <p class="income-hero-warning">⚠️ Du har ikke satt lønningsdag ennå.</p>
-      <router-link to="/income" class="button-primary card-link-button">Sett lønningsdag</router-link>
+      <p class="card-subtitle">Trykk på tannhjulet ⚙️ oppe til høyre for å legge den til.</p>
+      <router-link to="/settings" class="button-primary card-link-button">Åpne innstillinger</router-link>
     </section>
 
     <template v-else>
@@ -287,42 +123,15 @@ function trendMonthLabel(month: string): string {
 
       <template v-if="budgetRecommendation">
         <section class="card">
-          <h2>Anbefalt budsjett denne perioden</h2>
+          <router-link to="/budget" class="card-header-link">
+            <h2>Budsjett</h2>
+            <span class="card-header-arrow" aria-hidden="true">›</span>
+          </router-link>
           <div class="budget-row budget-row-income">
             <span>Loggført lønn</span>
             <ExplainableValue :result="budgetRecommendation.income" />
           </div>
-
-          <p class="budget-section-heading">Faste utgifter</p>
-          <div v-if="sortedLineItems.length" class="budget-line-items">
-            <div v-for="item in visibleLineItems" :key="item.recurringCostId" class="budget-row">
-              <span>
-                {{ categoryIcon(item.categoryId) }} {{ item.name }}
-                <span v-if="currentPlan?.type === 'shared'" class="budget-row-owner">
-                  {{ recurringCostOwnerName(item.recurringCostId) }}
-                </span>
-              </span>
-              <ExplainableValue :result="item.estimate" />
-            </div>
-            <button
-              v-if="hasMoreLineItems"
-              type="button"
-              class="button-link budget-line-items-toggle"
-              @click="showAllLineItems = !showAllLineItems"
-            >
-              {{
-                showAllLineItems
-                  ? 'Vis færre'
-                  : `Vis ${sortedLineItems.length - RECURRING_LINE_ITEMS_COLLAPSED_COUNT} til`
-              }}
-            </button>
-          </div>
-          <p v-else class="card-subtitle">
-            Du har ingen faste utgifter registrert ennå.
-            <router-link to="/recurring-costs">Legg til noen</router-link>.
-          </p>
-
-          <div class="budget-row budget-row-total">
+          <div class="budget-row">
             <span>Sum faste utgifter</span>
             <ExplainableValue :result="budgetRecommendation.totalCommitted" />
           </div>
@@ -345,33 +154,6 @@ function trendMonthLabel(month: string): string {
               <ExplainableValue :result="budgetRecommendation.split.unforeseen" />
             </div>
           </div>
-
-          <template v-if="discretionaryTransactionsThisPeriod.length">
-            <p class="budget-section-heading budget-section-heading-divided">Uforutsett utgift</p>
-            <div class="budget-line-items">
-              <div v-for="tx in visibleDiscretionaryTransactions" :key="tx.id" class="budget-row">
-                <span>
-                  {{ categoryLabel(tx.category_id) }}
-                  <span v-if="currentPlan?.type === 'shared'" class="budget-row-owner">
-                    {{ memberName(tx.paid_by) }}
-                  </span>
-                </span>
-                <span>{{ formatCurrencyNOK(tx.amount) }}</span>
-              </div>
-              <button
-                v-if="hasMoreDiscretionaryItems"
-                type="button"
-                class="button-link budget-line-items-toggle"
-                @click="showAllDiscretionaryItems = !showAllDiscretionaryItems"
-              >
-                {{
-                  showAllDiscretionaryItems
-                    ? 'Vis færre'
-                    : `Vis ${discretionaryTransactionsThisPeriod.length - RECURRING_LINE_ITEMS_COLLAPSED_COUNT} til`
-                }}
-              </button>
-            </div>
-          </template>
         </section>
 
         <section class="card">
@@ -456,6 +238,49 @@ function trendMonthLabel(month: string): string {
   color: var(--color-text-subtle);
 }
 
+.overview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.overview-header .page-header {
+  margin-bottom: 0;
+}
+
+.settings-gear {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  font-size: 1.2rem;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.settings-gear:active {
+  transform: scale(0.94);
+}
+
+.settings-gear-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  border: 2px solid var(--color-background);
+}
+
 .budget-row {
   display: flex;
   justify-content: space-between;
@@ -467,44 +292,6 @@ function trendMonthLabel(month: string): string {
   font-weight: 600;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-2);
-}
-
-.budget-section-heading {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-subtle);
-  margin: 0 0 var(--space-1);
-}
-
-.budget-section-heading-divided {
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-}
-
-.budget-row-owner {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--color-text-subtle);
-}
-
-.budget-line-items {
-  display: flex;
-  flex-direction: column;
-}
-
-.budget-line-items-toggle {
-  align-self: flex-start;
-  padding: var(--space-2) 0 0;
-}
-
-.budget-row-total {
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--space-2);
-  padding-top: var(--space-3);
 }
 
 .budget-row-remaining {
