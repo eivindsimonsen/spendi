@@ -219,13 +219,15 @@ function formatShortDate(dateString: string): string {
     </section>
 
     <section v-if="goalContributionsInWindow.length" class="card">
-      <h2>Spart til spareplaner</h2>
+      <router-link to="/savings" class="card-header-link">
+        <h2>Spart til spareplaner</h2>
+        <span class="card-header-arrow" aria-hidden="true">›</span>
+      </router-link>
       <p class="stat-hero-amount stat-hero-amount-small">{{ formatCurrencyNOK(totalSavedToGoals) }}</p>
       <div v-for="goal in goalContributionsInWindow" :key="goal.goalId" class="stat-row">
         <span>{{ goal.goalName }}</span>
         <span>{{ formatCurrencyNOK(goal.amount) }}</span>
       </div>
-      <router-link to="/savings" class="account-link savings-preview-link">Se spareplaner →</router-link>
     </section>
 
     <section v-if="transactionCount" class="card">
@@ -253,11 +255,6 @@ function formatShortDate(dateString: string): string {
 </template>
 
 <style scoped>
-.back-link {
-  display: inline-block;
-  margin-bottom: var(--space-4);
-}
-
 .stat-hero-amount {
   font-size: 2rem;
   font-weight: 800;
@@ -430,10 +427,5 @@ function formatShortDate(dateString: string): string {
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--color-text-subtle);
-}
-
-.savings-preview-link {
-  display: block;
-  margin-top: var(--space-2);
 }
 </style>

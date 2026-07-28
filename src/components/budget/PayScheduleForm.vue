@@ -31,8 +31,9 @@ const { loading, error, run } = useAsyncAction(async () => {
       <input v-model.number="payday" type="number" min="1" max="31" required />
     </label>
     <p class="form-hint">
-      Vi bruker denne til å regne budsjettperioden din fra lønningsdag til lønningsdag, i stedet
-      for kalendermåned. I en delt Spendiplan setter hver person sin egen lønningsdag.
+      Vi bruker denne til å regne budsjettperioden fra lønningsdag til lønningsdag, i stedet for
+      kalendermåned. I en delt Spendiplan setter hver person sin egen lønningsdag, og perioden
+      følger den som får lønn tidligst i måneden, slik at alles lønn havner i samme periode.
     </p>
     <p v-if="error" class="form-error">{{ error }}</p>
     <button type="submit" class="button-primary" :disabled="loading">

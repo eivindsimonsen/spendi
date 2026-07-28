@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth.store'
 import AppTabBar from '@/components/layout/AppTabBar.vue'
+import UpdatePrompt from '@/components/common/UpdatePrompt.vue'
 
 const auth = useAuthStore()
 </script>
 
 <template>
   <div class="app-layout">
+    <UpdatePrompt />
     <main class="main-content">
       <router-view />
     </main>

@@ -38,11 +38,3 @@ const { loading, error, run } = useAsyncAction(async () => {
     </section>
   </div>
 </template>
-
-<style scoped>
-.back-link {
-  display: inline-block;
-  margin-bottom: var(--space-4);
-  padding: 0;
-}
-</style>

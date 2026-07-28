@@ -26,7 +26,6 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 
 const LOOKBACK_MONTHS = 3
 const TREND_MONTHS = 6
-const RECENT_TRANSACTIONS_PREVIEW_COUNT = 5
 const RECURRING_LINE_ITEMS_COLLAPSED_COUNT = 5
 
 const { currentPlan } = useCurrentPlan()
@@ -60,13 +59,13 @@ watch(
 )
 
 const currentPeriod = computed(() => {
-  if (!incomeStore.paySchedule) return null
-  return getPayPeriod(incomeStore.paySchedule.payday, new Date())
+  if (incomeStore.referencePayday == null) return null
+  return getPayPeriod(incomeStore.referencePayday, new Date())
 })
 
 const daysUntilPayday = computed(() => {
-  if (!incomeStore.paySchedule) return null
-  return getDaysUntilPayday(incomeStore.paySchedule.payday, new Date())
+  if (incomeStore.referencePayday == null) return null
+  return getDaysUntilPayday(incomeStore.referencePayday, new Date())
 })
 
 const planMemberProfiles = ref(new Map<string, Profile>())
@@ -212,10 +211,6 @@ const visibleLineItems = computed(() =>
 function categoryIcon(categoryId: string): string {
   return categoriesStore.categories.find((category) => category.id === categoryId)?.icon ?? ''
 }
-
-const recentTransactionsPreview = computed(() =>
-  transactionsStore.recentTransactions.slice(0, RECENT_TRANSACTIONS_PREVIEW_COUNT),
-)
 
 // Month-over-month trend, including months with zero spend so the shape
 // of the timeline is honest rather than skipping gaps.
@@ -387,7 +382,10 @@ function trendMonthLabel(month: string): string {
       </template>
 
       <section v-if="savingsStore.goals.length" class="card">
-        <h2>Spareplaner</h2>
+        <router-link to="/savings" class="card-header-link">
+          <h2>Spareplaner</h2>
+          <span class="card-header-arrow" aria-hidden="true">›</span>
+        </router-link>
         <div class="savings-preview-grid">
           <router-link
             v-for="goal in savingsStore.goals"
@@ -406,16 +404,13 @@ function trendMonthLabel(month: string): string {
             </span>
           </router-link>
         </div>
-        <router-link to="/savings" class="account-link savings-preview-link"
-          >Administrer spareplaner →</router-link
-        >
       </section>
     </template>
 
     <router-link to="/statistics" class="card trend-card">
-      <div class="trend-card-header">
+      <div class="card-header-link">
         <h2>Utvikling siste {{ TREND_MONTHS }} måneder</h2>
-        <span class="income-hero-arrow" aria-hidden="true">›</span>
+        <span class="card-header-arrow" aria-hidden="true">›</span>
       </div>
       <div class="trend-chart">
         <div v-for="entry in trendMonths" :key="entry.month" class="trend-bar-col">
@@ -425,19 +420,7 @@ function trendMonthLabel(month: string): string {
           <span class="trend-bar-label">{{ trendMonthLabel(entry.month) }}</span>
         </div>
       </div>
-      <p class="card-subtitle trend-card-hint">Se full statistikk →</p>
     </router-link>
-
-    <section v-if="recentTransactionsPreview.length" class="card">
-      <h2>Siste utgifter</h2>
-      <ul class="recent-transactions-list">
-        <li v-for="tx in recentTransactionsPreview" :key="tx.id" class="recent-transaction-item">
-          <span>{{ categoryLabel(tx.category_id) }}</span>
-          <span class="recent-transaction-amount">{{ formatCurrencyNOK(tx.amount) }}</span>
-        </li>
-      </ul>
-      <router-link to="/history" class="account-link">Se all historikk →</router-link>
-    </section>
   </div>
 </template>
 
@@ -569,29 +552,10 @@ function trendMonthLabel(month: string): string {
   opacity: 0.9;
 }
 
-.savings-preview-link {
-  display: block;
-}
-
 .trend-card {
   display: block;
   color: inherit;
   text-decoration: none;
-}
-
-.trend-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-}
-
-.trend-card-header h2 {
-  margin: 0;
-}
-
-.trend-card-hint {
-  margin: var(--space-2) 0 0;
 }
 
 .trend-chart {
@@ -635,25 +599,4 @@ function trendMonthLabel(month: string): string {
   text-transform: capitalize;
 }
 
-.recent-transactions-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--space-3);
-}
-
-.recent-transaction-item {
-  display: flex;
-  justify-content: space-between;
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.recent-transaction-item:first-child {
-  border-top: none;
-  padding-top: 0;
-}
-
-.recent-transaction-amount {
-  font-weight: 600;
-}
 </style>

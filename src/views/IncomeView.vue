@@ -31,8 +31,8 @@ onMounted(() => {
 })
 
 const currentPeriod = computed(() => {
-  if (!incomeStore.paySchedule) return null
-  return getPayPeriod(incomeStore.paySchedule.payday, new Date())
+  if (incomeStore.referencePayday == null) return null
+  return getPayPeriod(incomeStore.referencePayday, new Date())
 })
 
 watch(
@@ -209,12 +209,6 @@ async function removePayment(id: string) {
 </template>
 
 <style scoped>
-.back-link {
-  display: inline-block;
-  margin-bottom: var(--space-4);
-  padding: 0;
-}
-
 .income-total {
   font-size: 2rem;
   font-weight: 800;

@@ -68,27 +68,32 @@ async function respond(memberId: string, status: 'accepted' | 'declined') {
 
 <template>
   <div class="container">
+    <router-link to="/account" class="button-link back-link">← Tilbake til konto</router-link>
+
     <div class="page-header">
-      <h1>Venner og Spendiplan</h1>
+      <h1>Se og legg til venner</h1>
     </div>
 
     <section v-if="plansStore.pendingInvites.length" class="card">
       <h2>Ventende invitasjoner</h2>
-      <div
-        v-for="invite in plansStore.pendingInvites"
-        :key="invite.id"
-        class="pending-invite"
-      >
+      <div v-for="invite in plansStore.pendingInvites" :key="invite.id" class="pending-invite">
         <p>
-          <strong>{{ friendsStore.friendProfiles.get(invite.invited_by ?? '')?.display_name ?? 'Noen' }}</strong>
-          ønsker å starte Spendiplanen
-          "{{ plansStore.pendingInvitePlans.get(invite.plan_id)?.name ?? '' }}" med deg.
+          <strong>{{
+            friendsStore.friendProfiles.get(invite.invited_by ?? '')?.display_name ?? 'Noen'
+          }}</strong>
+          ønsker å starte Spendiplanen "{{
+            plansStore.pendingInvitePlans.get(invite.plan_id)?.name ?? ''
+          }}" med deg.
         </p>
         <div class="pending-invite-actions">
           <button type="button" class="button-primary" @click="respond(invite.id, 'accepted')">
             Ja
           </button>
-          <button type="button" class="pending-invite-decline" @click="respond(invite.id, 'declined')">
+          <button
+            type="button"
+            class="pending-invite-decline"
+            @click="respond(invite.id, 'declined')"
+          >
             Nei
           </button>
         </div>
@@ -104,7 +109,13 @@ async function respond(memberId: string, status: 'accepted' | 'declined') {
           {{ codeCopied ? 'Kopiert!' : 'Kopier' }}
         </button>
       </div>
-      <button v-else type="button" class="button-primary" :disabled="generating" @click="runGenerateCode()">
+      <button
+        v-else
+        type="button"
+        class="button-primary"
+        :disabled="generating"
+        @click="runGenerateCode()"
+      >
         {{ generating ? 'Genererer …' : 'Generer kode' }}
       </button>
     </section>
@@ -150,13 +161,21 @@ async function respond(memberId: string, status: 'accepted' | 'declined') {
           </div>
 
           <form
-            v-if="proposingFriendId === friendsStore.otherProfileId(friendship, authStore.user?.id ?? '')"
+            v-if="
+              proposingFriendId ===
+              friendsStore.otherProfileId(friendship, authStore.user?.id ?? '')
+            "
             class="form propose-form"
             @submit.prevent="runPropose()"
           >
             <label class="form-field">
               Navn på Spendiplanen
-              <input v-model="sharedPlanName" type="text" placeholder="F.eks. Felles økonomi" required />
+              <input
+                v-model="sharedPlanName"
+                type="text"
+                placeholder="F.eks. Felles økonomi"
+                required
+              />
             </label>
             <p v-if="proposeError" class="form-error">{{ proposeError }}</p>
             <button type="submit" class="button-primary" :disabled="proposing">

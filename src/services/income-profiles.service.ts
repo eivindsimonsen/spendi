@@ -20,6 +20,14 @@ export const incomeProfilesService = {
     return data
   },
 
+  // Every member's payday for a plan -- used to find the earliest one,
+  // since that's what a shared plan's period boundary is anchored to.
+  async listByPlan(planId: string) {
+    const { data, error } = await supabase.from('income_profiles').select('*').eq('plan_id', planId)
+    if (error) throw error
+    return data
+  },
+
   async upsert(input: PayScheduleInput) {
     const { data, error } = await supabase
       .from('income_profiles')

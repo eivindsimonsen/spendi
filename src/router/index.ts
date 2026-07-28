@@ -11,6 +11,12 @@ declare module 'vue-router' {
 // routes land in Phases 2-5).
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // Vue Router keeps the scroll position across navigations by default --
+  // reset to the top on every new route, except browser back/forward,
+  // where restoring where the user was is the expected behavior.
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition ?? { top: 0 }
+  },
   routes: [
     {
       path: '/',

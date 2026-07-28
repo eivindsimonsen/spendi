@@ -230,6 +230,33 @@ button {
   text-decoration: none;
 }
 
+/*
+  A card's title row doubling as the link to that panel's full page --
+  the single, consistent "this panel opens somewhere" affordance (a
+  trailing chevron) used instead of a bottom text link like
+  "Se historikk →". Works on a <router-link> when the header itself is
+  the tappable link, or a plain <div> for layout only when an ancestor
+  element (e.g. the whole card) is the actual link.
+*/
+.card-header-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: var(--space-3);
+}
+
+.card-header-link h2 {
+  margin: 0;
+}
+
+.card-header-arrow {
+  font-size: 1.8rem;
+  color: var(--color-text-subtle);
+  flex-shrink: 0;
+}
+
 /* A tappable row linking to another page, e.g. inside Account. */
 .account-link {
   display: block;
@@ -280,4 +307,11 @@ button {
   color: var(--color-primary);
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+/* A breadcrumb back to the page a sub-page was opened from, e.g. "←
+   Tilbake til oversikt" atop Lønn, Statistikk or Venner. */
+.back-link {
+  display: inline-block;
+  margin-bottom: var(--space-4);
 }

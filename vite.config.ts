@@ -8,7 +8,10 @@ export default defineConfig({
   plugins: [
     vue(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not 'autoUpdate') so a new build waits for the user to
+      // confirm via UpdatePrompt.vue, instead of silently swapping the
+      // app shell under an already-open tab.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Spendi',
