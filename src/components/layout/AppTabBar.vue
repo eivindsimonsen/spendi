@@ -88,8 +88,9 @@ function goTo(path: string) {
 .tab-bar {
   position: fixed;
   /* Floats clear of the edges (and the home-indicator safe area) rather
-     than sitting flush against the screen edge. */
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-3));
+     than sitting flush against the screen edge -- just a small gap, not
+     the large one this used to have. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-1));
   left: var(--space-4);
   right: var(--space-4);
   max-width: 400px;
