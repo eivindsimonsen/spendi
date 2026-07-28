@@ -71,8 +71,13 @@ function handleActionClick() {
 
 <template>
   <div class="swipe-action">
-    <button type="button" class="swipe-action-reveal" @click="handleActionClick">
-      {{ label }}
+    <button
+      type="button"
+      class="swipe-action-reveal"
+      :style="{ width: `${-translateX}px` }"
+      @click="handleActionClick"
+    >
+      <span class="swipe-action-reveal-label">{{ label }}</span>
     </button>
     <div
       class="swipe-action-content"
@@ -95,19 +100,31 @@ function handleActionClick() {
 }
 
 .swipe-action-reveal {
+  /* Sized to exactly match the exposed gap (see :style binding) rather
+     than spanning the full row at a fixed opacity -- otherwise this
+     background would show through the content's translucent glass
+     surface even at rest, with nothing dragged at all. No padding on
+     this element itself -- padding would set a minimum rendered width
+     even when width is bound to 0, leaving a persistent sliver. */
   position: absolute;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding-right: var(--space-4);
+  padding: 0;
   border: none;
   background: var(--color-primary);
   color: var(--color-primary-contrast);
+  overflow: hidden;
+}
+
+.swipe-action-reveal-label {
+  padding-right: var(--space-4);
   font-weight: 700;
   font-size: 0.9rem;
-  text-align: right;
+  white-space: nowrap;
 }
 
 .swipe-action-content {

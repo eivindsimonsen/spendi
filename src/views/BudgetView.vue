@@ -134,6 +134,9 @@ async function handleDeleteTransaction(id: string) {
         </div>
 
         <p class="budget-section-heading">Faste utgifter</p>
+        <p v-if="sortedLineItems.length" class="card-subtitle budget-swipe-hint">
+          💡 Dra en utgift mot venstre for å hoppe over den denne perioden.
+        </p>
         <template v-if="sortedLineItems.length">
           <template v-if="currentPlan?.type === 'shared'">
             <div v-for="group in lineItemsByOwner" :key="group.ownerName" class="budget-owner-group">
@@ -327,6 +330,11 @@ async function handleDeleteTransaction(id: string) {
   letter-spacing: 0.05em;
   color: var(--color-text-subtle);
   margin: 0 0 var(--space-1);
+}
+
+.budget-swipe-hint {
+  font-size: 0.8rem;
+  margin: 0 0 var(--space-2);
 }
 
 .budget-section-heading-divided {
