@@ -1,6 +1,7 @@
 import { subDays } from 'date-fns'
 import { getPayPeriod, type PayPeriod } from './pay-schedule'
 import type { DatedAmount } from './variable-cost-estimator'
+import { isWithinRange } from './date-range'
 
 // Walks backward from the current period, producing `count` prior period
 // boundaries (most recent first) -- each one found by asking for the
@@ -36,10 +37,7 @@ export function summarizePeriod(
 ): PeriodSummary {
   function sumInRange(items: DatedAmount[]): number {
     return items
-      .filter((item) => {
-        const occurred = new Date(item.occurredOn)
-        return occurred >= period.start && occurred < period.end
-      })
+      .filter((item) => isWithinRange(new Date(item.occurredOn), period.start, period.end))
       .reduce((sum, item) => sum + item.amount, 0)
   }
 

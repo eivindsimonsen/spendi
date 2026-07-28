@@ -37,7 +37,8 @@ export const BUDGET_MODELS: Record<BudgetModelId, BudgetModelDefinition> = {
   'relaxed-70-20-10': {
     id: 'relaxed-70-20-10',
     label: 'Avslappet (70/20/10)',
-    description: 'Mer albuerom til fri bruk i hverdagen, med en mindre buffer til sparing og uforutsett.',
+    description:
+      'Mer albuerom til fri bruk i hverdagen, med en mindre buffer til sparing og uforutsett.',
     funShare: 0.7,
     savingsShare: 0.2,
     unforeseenShare: 0.1,

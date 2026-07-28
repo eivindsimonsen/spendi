@@ -290,10 +290,6 @@ button {
   transition: width 0.3s ease;
 }
 
-.progress-fill-danger {
-  background-color: var(--color-danger);
-}
-
 /* A plain-text, low-emphasis destructive action (e.g. "Fjern"). */
 .button-danger-link {
   background: none;
@@ -316,4 +312,235 @@ button {
 .back-link {
   display: inline-block;
   margin-bottom: var(--space-4);
+}
+
+/*
+  A list row: label/content on the left, value/actions on the right,
+  separated from the row above by a top border (none on the first row).
+  Used for history/recurring-cost/category/income/friend rows etc.
+*/
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.list-row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Like .list-row, but without the flex layout, for rows whose content
+   flows normally instead of a simple label-left/value-right pair (e.g.
+   a pending-invite row with a paragraph then a button group below it). */
+.list-row-block {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.list-row-block:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* A budget/summary line: label left, value (often an ExplainableValue)
+   right. Used throughout the "Anbefalt budsjett" breakdown on both
+   Oversikt and Budsjett, and for a savings goal's required-per-month row. */
+.budget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+}
+
+.budget-row-income {
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
+}
+
+.budget-row-remaining {
+  font-weight: 600;
+}
+
+.budget-split {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  color: var(--color-success);
+}
+
+/* A large currency figure used as a card's headline number (income for
+   the period, total spent, a savings-goal total, ...). */
+.amount-hero {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Same look as .form-field input, for a compact input/select that isn't
+   wrapped in a <label class="form-field"> (e.g. a child component's own
+   <select>, or a couple of inline edit fields side by side). */
+.form-input-compact {
+  font-size: 1rem;
+  padding: var(--space-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background-color: var(--glass-bg-strong);
+  color: var(--color-text);
+}
+
+/*
+  Small mini bar-chart for a month-over-month trend. Default height
+  120px; add .trend-chart-tall for the 160px variant (Statistics, which
+  also labels each bar with its amount).
+*/
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 120px;
+}
+
+.trend-chart-tall {
+  height: 160px;
+}
+
+.trend-bar-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.trend-bar-track {
+  width: 100%;
+  max-width: 32px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.trend-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, var(--color-primary), var(--color-primary-hover));
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: height 0.3s ease;
+}
+
+.trend-bar-label {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+/* A label + progress bar + value row, e.g. "category share of spend". */
+.stat-bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: 0.9rem;
+}
+
+.stat-bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-bar-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/*
+  A 4-column summary table (a leading label column + 3 numeric columns),
+  e.g. "income vs. expense per month" or "period history". Override
+  grid-template-columns locally to size the leading column per caller.
+*/
+.summary-grid-header,
+.summary-grid-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 1fr;
+  gap: var(--space-2);
+  align-items: center;
+  text-align: right;
+}
+
+.summary-grid-header {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle);
+  padding-bottom: var(--space-1);
+}
+
+.summary-grid-header span:first-child,
+.summary-grid-row-label {
+  text-align: left;
+}
+
+.summary-grid-row {
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-grid-row:first-child {
+  border-top: none;
+}
+
+/* A small "✕" icon button for removing/deleting a single row/item. */
+.icon-button-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-subtle);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: var(--space-1);
+}
+
+.icon-button-remove:hover {
+  color: var(--color-danger);
+}
+
+/* A horizontally-scrolling row of cards (plan picker, savings goal
+   preview cards, ...). */
+.card-carousel {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.card-carousel-item {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+/* Small uppercase label above a group of content, e.g. "Faste utgifter"
+   or the "Ny plan" divider in the add-action sheet. */
+.section-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-subtle);
 }

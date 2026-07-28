@@ -4,6 +4,7 @@ import CategoryPicker from '@/components/common/CategoryPicker.vue'
 import { useTransactionsStore } from '@/stores/transactions.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { todayLocalDate } from '@/core/format'
 
 const props = defineProps<{ planId: string }>()
 const emit = defineEmits<{ created: [] }>()
@@ -11,13 +12,9 @@ const emit = defineEmits<{ created: [] }>()
 const transactionsStore = useTransactionsStore()
 const authStore = useAuthStore()
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 const amount = ref<number | null>(null)
 const categoryId = ref('')
-const occurredOn = ref(today())
+const occurredOn = ref(todayLocalDate())
 const note = ref('')
 
 const { loading, error, run } = useAsyncAction(async () => {
@@ -35,7 +32,7 @@ const { loading, error, run } = useAsyncAction(async () => {
 
   amount.value = null
   categoryId.value = ''
-  occurredOn.value = today()
+  occurredOn.value = todayLocalDate()
   note.value = ''
   emit('created')
 })

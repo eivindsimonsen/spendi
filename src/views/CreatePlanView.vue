@@ -39,7 +39,13 @@ function finish() {
       <form class="form" @submit.prevent="run()">
         <label class="form-field">
           Navn
-          <input v-model="name" type="text" placeholder="F.eks. Sparing til bil" required autofocus />
+          <input
+            v-model="name"
+            type="text"
+            placeholder="F.eks. Sparing til bil"
+            required
+            autofocus
+          />
         </label>
         <p v-if="error" class="form-error">{{ error }}</p>
         <button type="submit" class="button-primary" :disabled="loading">

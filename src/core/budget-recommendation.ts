@@ -100,7 +100,12 @@ export function buildBudgetRecommendation(
 
   const lineItems: BudgetLineItem[] = recurringCosts.map((cost) => {
     const estimate = cost.isVariable
-      ? estimateVariableCostWithFallback(cost, transactionsByCategory, lookbackMonths, referenceDate)
+      ? estimateVariableCostWithFallback(
+          cost,
+          transactionsByCategory,
+          lookbackMonths,
+          referenceDate,
+        )
       : manualCostEstimate(cost.amount ?? 0)
 
     return {

@@ -34,12 +34,7 @@
   --glass-highlight: rgba(255, 255, 255, 0.9);
   --blur-glass: 20px;
 
-  --font-sans:
-    'Manrope',
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  --font-sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --radius-sm: 6px;
   --radius-md: 10px;

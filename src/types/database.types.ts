@@ -9,6 +9,8 @@
 // @supabase/supabase-js/src/lib/rest/types/common/common.ts) -- without
 // them every table's Insert/Update resolves to `never`.
 
+import type { BudgetModelId } from '@/core/discretionary-split'
+
 export type PlanType = 'individual' | 'shared'
 export type PlanMemberRole = 'owner' | 'member'
 export type PlanMemberStatus = 'pending' | 'accepted' | 'declined'
@@ -40,7 +42,7 @@ export interface Database {
           id: string
           name: string
           type: PlanType
-          budget_model: string
+          budget_model: BudgetModelId
           created_by: string
           created_at: string
         }
@@ -48,7 +50,7 @@ export interface Database {
           id?: string
           name: string
           type: PlanType
-          budget_model?: string
+          budget_model?: BudgetModelId
           created_by: string
           created_at?: string
         }
@@ -56,7 +58,7 @@ export interface Database {
           id?: string
           name?: string
           type?: PlanType
-          budget_model?: string
+          budget_model?: BudgetModelId
           created_by?: string
           created_at?: string
         }
@@ -342,7 +344,7 @@ export interface Database {
           name: string
           target_amount: number
           target_date: string
-          theme: string
+          theme: SavingsGoalTheme
           created_at: string
         }
         Insert: {
@@ -351,7 +353,7 @@ export interface Database {
           name: string
           target_amount: number
           target_date: string
-          theme?: string
+          theme?: SavingsGoalTheme
           created_at?: string
         }
         Update: {
@@ -360,7 +362,7 @@ export interface Database {
           name?: string
           target_amount?: number
           target_date?: string
-          theme?: string
+          theme?: SavingsGoalTheme
           created_at?: string
         }
         Relationships: []

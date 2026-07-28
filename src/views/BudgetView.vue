@@ -11,7 +11,7 @@ import { useAsyncAction } from '@/composables/useAsyncAction'
 import { BUDGET_MODELS, DEFAULT_BUDGET_MODEL, type BudgetModelId } from '@/core/discretionary-split'
 import { calculateDailyAllowance, classifyDailyAllowance } from '@/core/daily-allowance'
 import type { PayPeriod } from '@/core/pay-schedule'
-import { formatCurrencyNOK } from '@/core/format'
+import { formatCurrencyNOK, formatShortDate } from '@/core/format'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import SwipeAction from '@/components/common/SwipeAction.vue'
 
@@ -26,11 +26,7 @@ const { currentPlan } = useCurrentPlan()
 const plansStore = usePlansStore()
 const transactionsStore = useTransactionsStore()
 const { categoryLabel } = useCategoryLabel()
-const { periodSummaries } = usePeriodHistory()
-
-function formatShortDate(date: Date): string {
-  return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
-}
+const { periodSummaries } = usePeriodHistory(currentPlan)
 
 function formatPeriodRange(period: PayPeriod): string {
   return `${formatShortDate(period.start)} – ${formatShortDate(subDays(period.end, 1))}`
@@ -46,7 +42,7 @@ const {
   recurringCostOwnerName,
   categoryIcon,
   toggleRecurringCostSkip,
-} = useBudgetRecommendation()
+} = useBudgetRecommendation(currentPlan)
 
 // Grouped by who's responsible for each cost, so a shared plan's list
 // shows each person's name once instead of repeating it under every
@@ -66,7 +62,7 @@ const lineItemsByOwner = computed(() => {
 const budgetModelList = Object.values(BUDGET_MODELS)
 
 const selectedModelId = computed<BudgetModelId>(
-  () => (currentPlan.value?.budget_model as BudgetModelId | undefined) ?? DEFAULT_BUDGET_MODEL,
+  () => currentPlan.value?.budget_model ?? DEFAULT_BUDGET_MODEL,
 )
 
 const {
@@ -92,7 +88,8 @@ const dailyAllowance = computed(() => {
 const recommendedDailyRate = computed(() => {
   if (!budgetRecommendation.value || !currentPeriod.value) return null
   const periodLengthDays = Math.round(
-    (currentPeriod.value.end.getTime() - currentPeriod.value.start.getTime()) / (1000 * 60 * 60 * 24),
+    (currentPeriod.value.end.getTime() - currentPeriod.value.start.getTime()) /
+      (1000 * 60 * 60 * 24),
   )
   if (periodLengthDays <= 0) return null
   return budgetRecommendation.value.split.fun.value / periodLengthDays
@@ -133,13 +130,17 @@ async function handleDeleteTransaction(id: string) {
           <ExplainableValue :result="budgetRecommendation.income" />
         </div>
 
-        <p class="budget-section-heading">Faste utgifter</p>
+        <p class="section-eyebrow budget-section-heading">Faste utgifter</p>
         <p v-if="sortedLineItems.length" class="card-subtitle budget-swipe-hint">
           💡 Dra en utgift mot venstre for å hoppe over den denne perioden.
         </p>
         <template v-if="sortedLineItems.length">
           <template v-if="currentPlan?.type === 'shared'">
-            <div v-for="group in lineItemsByOwner" :key="group.ownerName" class="budget-owner-group">
+            <div
+              v-for="group in lineItemsByOwner"
+              :key="group.ownerName"
+              class="budget-owner-group"
+            >
               <p class="budget-owner-heading">{{ group.ownerName }}</p>
               <div class="budget-line-items">
                 <SwipeAction
@@ -150,7 +151,10 @@ async function handleDeleteTransaction(id: string) {
                 >
                   <div class="budget-row" :class="{ 'budget-row-skipped': item.skipped }">
                     <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
-                    <ExplainableValue v-if="hasCalculation(item.estimate.model)" :result="item.estimate" />
+                    <ExplainableValue
+                      v-if="hasCalculation(item.estimate.model)"
+                      :result="item.estimate"
+                    />
                     <span v-else>{{ formatCurrencyNOK(item.estimate.value) }}</span>
                   </div>
                 </SwipeAction>
@@ -166,7 +170,10 @@ async function handleDeleteTransaction(id: string) {
             >
               <div class="budget-row" :class="{ 'budget-row-skipped': item.skipped }">
                 <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
-                <ExplainableValue v-if="hasCalculation(item.estimate.model)" :result="item.estimate" />
+                <ExplainableValue
+                  v-if="hasCalculation(item.estimate.model)"
+                  :result="item.estimate"
+                />
                 <span v-else>{{ formatCurrencyNOK(item.estimate.value) }}</span>
               </div>
             </SwipeAction>
@@ -202,7 +209,9 @@ async function handleDeleteTransaction(id: string) {
         </div>
 
         <template v-if="discretionaryTransactionsThisPeriod.length">
-          <p class="budget-section-heading budget-section-heading-divided">Uforutsett utgift</p>
+          <p class="section-eyebrow budget-section-heading budget-section-heading-divided">
+            Uforutsett utgift
+          </p>
           <div class="budget-line-items">
             <div v-for="tx in discretionaryTransactionsThisPeriod" :key="tx.id" class="budget-row">
               <span>
@@ -215,7 +224,7 @@ async function handleDeleteTransaction(id: string) {
                 <span>{{ formatCurrencyNOK(tx.amount) }}</span>
                 <button
                   type="button"
-                  class="budget-row-remove"
+                  class="icon-button-remove"
                   aria-label="Fjern utgift"
                   @click="handleDeleteTransaction(tx.id)"
                 >
@@ -229,15 +238,19 @@ async function handleDeleteTransaction(id: string) {
 
       <section v-if="periodSummaries.length" class="card">
         <h2>Tidligere perioder</h2>
-        <div class="period-history-header">
+        <div class="summary-grid-header period-history-columns">
           <span></span>
           <span>Inntekt</span>
           <span>Brukt</span>
           <span>Spart</span>
         </div>
         <div class="period-history-list">
-          <div v-for="summary in periodSummaries" :key="summary.period.start.toISOString()" class="period-history-row">
-            <span class="period-history-range">{{ formatPeriodRange(summary.period) }}</span>
+          <div
+            v-for="summary in periodSummaries"
+            :key="summary.period.start.toISOString()"
+            class="summary-grid-row period-history-columns"
+          >
+            <span class="summary-grid-row-label">{{ formatPeriodRange(summary.period) }}</span>
             <span class="period-history-income">{{ formatCurrencyNOK(summary.income) }}</span>
             <span class="period-history-spent">{{ formatCurrencyNOK(summary.spent) }}</span>
             <span class="period-history-saved">{{ formatCurrencyNOK(summary.saved) }}</span>
@@ -247,7 +260,9 @@ async function handleDeleteTransaction(id: string) {
 
       <section class="card">
         <h2>Budsjettmodell</h2>
-        <p class="card-subtitle">Velg hvilken fordeling "Fri bruk / Sparing / Uforutsett" skal følge.</p>
+        <p class="card-subtitle">
+          Velg hvilken fordeling "Fri bruk / Sparing / Uforutsett" skal følge.
+        </p>
         <div class="budget-model-list">
           <button
             v-for="model in budgetModelList"
@@ -260,7 +275,10 @@ async function handleDeleteTransaction(id: string) {
           >
             <span class="budget-model-option-header">
               <strong>{{ model.label }}</strong>
-              <span v-if="model.id === selectedModelId" class="budget-model-option-check" aria-hidden="true"
+              <span
+                v-if="model.id === selectedModelId"
+                class="budget-model-option-check"
+                aria-hidden="true"
                 >✓</span
               >
             </span>
@@ -305,30 +323,7 @@ async function handleDeleteTransaction(id: string) {
 </template>
 
 <style scoped>
-.back-link {
-  display: inline-block;
-  margin-bottom: var(--space-4);
-}
-
-.budget-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) 0;
-}
-
-.budget-row-income {
-  font-weight: 600;
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: var(--space-2);
-}
-
 .budget-section-heading {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-subtle);
   margin: 0 0 var(--space-1);
 }
 
@@ -371,19 +366,6 @@ async function handleDeleteTransaction(id: string) {
   gap: var(--space-2);
 }
 
-.budget-row-remove {
-  background: none;
-  border: none;
-  color: var(--color-text-subtle);
-  font-size: 0.9rem;
-  line-height: 1;
-  padding: var(--space-1);
-}
-
-.budget-row-remove:hover {
-  color: var(--color-danger);
-}
-
 .budget-row-skipped {
   opacity: 0.55;
 }
@@ -399,48 +381,8 @@ async function handleDeleteTransaction(id: string) {
   padding-top: var(--space-3);
 }
 
-.budget-row-remaining {
-  font-weight: 600;
-}
-
-.budget-split {
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  color: var(--color-success);
-}
-
-.period-history-header,
-.period-history-row {
-  display: grid;
+.period-history-columns {
   grid-template-columns: 88px 1fr 1fr 1fr;
-  gap: var(--space-2);
-  align-items: center;
-  text-align: right;
-}
-
-.period-history-header {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-subtle);
-  padding-bottom: var(--space-1);
-}
-
-.period-history-header span:first-child,
-.period-history-range {
-  text-align: left;
-}
-
-.period-history-row {
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--color-border);
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.period-history-row:first-child {
-  border-top: none;
 }
 
 .period-history-income {

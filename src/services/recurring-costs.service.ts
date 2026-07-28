@@ -9,13 +9,6 @@ export interface CreateRecurringCostInput {
   createdBy: string
 }
 
-export interface UpdateRecurringCostInput {
-  name?: string
-  categoryId?: string
-  amount?: number | null
-  isVariable?: boolean
-}
-
 export const recurringCostsService = {
   async listByPlan(planId: string) {
     const { data, error } = await supabase
@@ -39,22 +32,6 @@ export const recurringCostsService = {
         is_variable: input.isVariable,
         created_by: input.createdBy,
       })
-      .select()
-      .single()
-    if (error) throw error
-    return data
-  },
-
-  async update(id: string, changes: UpdateRecurringCostInput) {
-    const { data, error } = await supabase
-      .from('recurring_costs')
-      .update({
-        name: changes.name,
-        category_id: changes.categoryId,
-        amount: changes.amount,
-        is_variable: changes.isVariable,
-      })
-      .eq('id', id)
       .select()
       .single()
     if (error) throw error

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import type { BudgetModelId } from '@/core/discretionary-split'
 
 export const plansService = {
   // RLS already scopes results to plans the current user is a member of.
@@ -39,7 +40,7 @@ export const plansService = {
     if (error) throw error
   },
 
-  async updateBudgetModel(id: string, budgetModel: string) {
+  async updateBudgetModel(id: string, budgetModel: BudgetModelId) {
     const { data, error } = await supabase
       .from('plans')
       .update({ budget_model: budgetModel })

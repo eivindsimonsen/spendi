@@ -5,7 +5,7 @@ import { useIncomePaymentsStore } from '@/stores/income-payments.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
-import { formatCurrencyNOK } from '@/core/format'
+import { formatCurrencyNOK, todayLocalDate } from '@/core/format'
 import type { Database } from '@/types/database.types'
 
 type IncomePayment = Database['public']['Tables']['income_payments']['Row']
@@ -16,22 +16,18 @@ const { currentPlan } = useCurrentPlan()
 const incomePaymentsStore = useIncomePaymentsStore()
 const authStore = useAuthStore()
 
-const { periodIncomeTotal, memberName } = useBudgetRecommendation()
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+const { periodIncomeTotal, memberName } = useBudgetRecommendation(currentPlan)
 
 const isFormOpen = ref(false)
 const editingId = ref<string | null>(null)
 const amount = ref<number | null>(null)
-const receivedOn = ref(today())
+const receivedOn = ref(todayLocalDate())
 const incomeType = ref(INCOME_TYPES[0]!)
 
 function startAdding() {
   editingId.value = null
   amount.value = null
-  receivedOn.value = today()
+  receivedOn.value = todayLocalDate()
   incomeType.value = INCOME_TYPES[0]!
   isFormOpen.value = true
 }
@@ -70,6 +66,8 @@ const {
 })
 
 async function removePayment(id: string) {
+  const confirmed = window.confirm('Er du sikker på at du vil fjerne denne inntekten?')
+  if (!confirmed) return
   await incomePaymentsStore.remove(id)
 }
 </script>
@@ -84,7 +82,7 @@ async function removePayment(id: string) {
 
     <section class="card">
       <h2>Denne perioden</h2>
-      <p class="income-total">{{ formatCurrencyNOK(periodIncomeTotal) }}</p>
+      <p class="amount-hero income-total">{{ formatCurrencyNOK(periodIncomeTotal) }}</p>
 
       <p v-if="!incomePaymentsStore.currentPeriodPayments.length" class="card-subtitle">
         Ingen inntekt logget for denne perioden ennå.
@@ -93,7 +91,7 @@ async function removePayment(id: string) {
         <li
           v-for="payment in incomePaymentsStore.currentPeriodPayments"
           :key="payment.id"
-          class="income-item"
+          class="list-row"
         >
           <div>
             <p class="income-item-amount">{{ formatCurrencyNOK(payment.amount) }}</p>
@@ -103,7 +101,9 @@ async function removePayment(id: string) {
             </p>
           </div>
           <div class="income-item-actions">
-            <button type="button" class="button-link" @click="startEditing(payment)">Rediger</button>
+            <button type="button" class="button-link" @click="startEditing(payment)">
+              Rediger
+            </button>
             <button type="button" class="button-danger-link" @click="removePayment(payment.id)">
               Fjern
             </button>
@@ -144,9 +144,6 @@ async function removePayment(id: string) {
 
 <style scoped>
 .income-total {
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
   margin: 0 0 var(--space-3);
 }
 
@@ -154,19 +151,6 @@ async function removePayment(id: string) {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--space-4);
-}
-
-.income-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--glass-border);
-}
-
-.income-item:first-child {
-  border-top: none;
-  padding-top: 0;
 }
 
 .income-item-amount {

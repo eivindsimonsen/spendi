@@ -1,27 +1,19 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useCurrentPlan } from '@/composables/useCurrentPlan'
+import { ref } from 'vue'
+import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { useSavingsStore } from '@/stores/savings.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { calculateRequiredMonthlySavings } from '@/core/savings-calculator'
-import { formatCurrencyNOK } from '@/core/format'
+import { formatCurrencyNOK, todayLocalDate } from '@/core/format'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
 import type { SavingsGoalTheme } from '@/types/database.types'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 
-const { currentPlan } = useCurrentPlan()
 const savingsStore = useSavingsStore()
 const authStore = useAuthStore()
 
-watch(
-  currentPlan,
-  async (plan) => {
-    if (!plan) return
-    await savingsStore.load(plan.id)
-  },
-  { immediate: true },
-)
+const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
 
 const goalName = ref('')
 const goalTargetAmount = ref<number | null>(null)
@@ -33,7 +25,12 @@ const {
   error: createGoalError,
   run: runCreateGoal,
 } = useAsyncAction(async () => {
-  if (!currentPlan.value || !goalName.value.trim() || goalTargetAmount.value == null || !goalTargetDate.value) {
+  if (
+    !currentPlan.value ||
+    !goalName.value.trim() ||
+    goalTargetAmount.value == null ||
+    !goalTargetDate.value
+  ) {
     return
   }
   await savingsStore.createGoal({
@@ -65,13 +62,9 @@ function requiredMonthlySavings(goal: { id: string; target_amount: number; targe
   )
 }
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 const contributingGoalId = ref<string | null>(null)
 const contributionAmount = ref<number | null>(null)
-const contributionDate = ref(today())
+const contributionDate = ref(todayLocalDate())
 
 const {
   loading: contributing,
@@ -92,7 +85,13 @@ const {
 function startContributing(goalId: string) {
   contributingGoalId.value = goalId
   contributionAmount.value = null
-  contributionDate.value = today()
+  contributionDate.value = todayLocalDate()
+}
+
+async function handleDeleteGoal(goalId: string, goalName: string) {
+  const confirmed = window.confirm(`Er du sikker på at du vil fjerne sparemålet "${goalName}"?`)
+  if (!confirmed) return
+  await savingsStore.deleteGoal(goalId)
 }
 </script>
 
@@ -137,18 +136,18 @@ function startContributing(goalId: string) {
     </section>
 
     <section v-for="goal in savingsStore.goals" :key="goal.id" class="card">
-      <div
-        class="savings-cover"
-        :style="{ background: SAVINGS_THEMES[goal.theme as SavingsGoalTheme].gradient }"
-      >
-        <span class="savings-cover-icon">{{ SAVINGS_THEMES[goal.theme as SavingsGoalTheme].icon }}</span>
+      <div class="savings-cover" :style="{ background: SAVINGS_THEMES[goal.theme].gradient }">
+        <span class="savings-cover-icon">{{ SAVINGS_THEMES[goal.theme].icon }}</span>
       </div>
 
       <h2>{{ goal.name }}</h2>
       <p class="card-subtitle">Måldato: {{ goal.target_date }}</p>
 
       <div class="progress-track savings-progress-track">
-        <div class="progress-fill" :style="{ width: progressPercent(goal.id, goal.target_amount) + '%' }" />
+        <div
+          class="progress-fill"
+          :style="{ width: progressPercent(goal.id, goal.target_amount) + '%' }"
+        />
       </div>
       <p class="card-subtitle">
         {{ formatCurrencyNOK(savingsStore.contributionsTotal(goal.id)) }} av
@@ -172,7 +171,14 @@ function startContributing(goalId: string) {
       <form v-else class="form savings-contribute-form" @submit.prevent="runContribute()">
         <label class="form-field">
           Beløp (kr)
-          <input v-model.number="contributionAmount" type="number" min="0" step="1" required autofocus />
+          <input
+            v-model.number="contributionAmount"
+            type="number"
+            min="0"
+            step="1"
+            required
+            autofocus
+          />
         </label>
         <label class="form-field">
           Dato
@@ -184,7 +190,11 @@ function startContributing(goalId: string) {
         </button>
       </form>
 
-      <button type="button" class="button-danger-link savings-remove-button" @click="savingsStore.deleteGoal(goal.id)">
+      <button
+        type="button"
+        class="button-danger-link savings-remove-button"
+        @click="handleDeleteGoal(goal.id, goal.name)"
+      >
         Fjern sparemål
       </button>
     </section>
@@ -207,13 +217,6 @@ function startContributing(goalId: string) {
 
 .savings-progress-track {
   margin-bottom: var(--space-2);
-}
-
-.budget-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) 0;
 }
 
 .savings-contribute-button {

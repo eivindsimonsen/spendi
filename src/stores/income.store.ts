@@ -39,10 +39,12 @@ export const useIncomeStore = defineStore('income', () => {
     const updated = await incomeProfilesService.upsert(input)
     paySchedule.value = updated
     planPaydays.value = planPaydays.value.some((profile) => profile.profile_id === input.profileId)
-      ? planPaydays.value.map((profile) => (profile.profile_id === input.profileId ? updated : profile))
+      ? planPaydays.value.map((profile) =>
+          profile.profile_id === input.profileId ? updated : profile,
+        )
       : [...planPaydays.value, updated]
     return updated
   }
 
-  return { paySchedule, planPaydays, referencePayday, loaded, load, save }
+  return { paySchedule, referencePayday, loaded, load, save }
 })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import { subMonths, subDays, format } from 'date-fns'
-import { useCurrentPlan } from '@/composables/useCurrentPlan'
+import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { usePlansStore } from '@/stores/plans.store'
 import { useIncomeStore } from '@/stores/income.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
@@ -9,33 +9,21 @@ import { useSavingsStore } from '@/stores/savings.store'
 import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
 import { sumByMonth } from '@/core/transaction-stats'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
-import type { SavingsGoalTheme } from '@/types/database.types'
-import { formatCurrencyNOK } from '@/core/format'
+import { formatCurrencyNOK, formatShortDate, formatMonthLabel } from '@/core/format'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import PlanPicker from '@/components/budget/PlanPicker.vue'
 
 const TREND_MONTHS = 6
 
-const { currentPlan } = useCurrentPlan()
 const plansStore = usePlansStore()
 const incomeStore = useIncomeStore()
 const transactionsStore = useTransactionsStore()
 const savingsStore = useSavingsStore()
 
-const { currentPeriod, daysUntilPayday, periodIncomeTotal, budgetRecommendation } = useBudgetRecommendation()
+const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
 
-watch(
-  currentPlan,
-  async (plan) => {
-    if (!plan) return
-    await savingsStore.load(plan.id)
-  },
-  { immediate: true },
-)
-
-function formatShortDate(date: Date): string {
-  return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
-}
+const { currentPeriod, daysUntilPayday, periodIncomeTotal, budgetRecommendation } =
+  useBudgetRecommendation(currentPlan)
 
 // Month-over-month trend, including months with zero spend so the shape
 // of the timeline is honest rather than skipping gaps.
@@ -63,13 +51,6 @@ const trendMax = computed(() => Math.max(1, ...trendMonths.value.map((entry) => 
 function trendBarHeight(total: number): number {
   return Math.round((total / trendMax.value) * 100)
 }
-
-function trendMonthLabel(month: string): string {
-  const [year, monthNumber] = month.split('-')
-  return new Date(Number(year), Number(monthNumber) - 1, 1).toLocaleDateString('nb-NO', {
-    month: 'short',
-  })
-}
 </script>
 
 <template>
@@ -81,7 +62,9 @@ function trendMonthLabel(month: string): string {
       <router-link
         to="/settings"
         class="settings-gear"
-        :aria-label="!incomeStore.paySchedule ? 'Innstillinger (lønningsdag mangler)' : 'Innstillinger'"
+        :aria-label="
+          !incomeStore.paySchedule ? 'Innstillinger (lønningsdag mangler)' : 'Innstillinger'
+        "
       >
         <span aria-hidden="true">⚙️</span>
         <span v-if="!incomeStore.paySchedule" class="settings-gear-dot" aria-hidden="true" />
@@ -97,7 +80,9 @@ function trendMonthLabel(month: string): string {
     <section v-else-if="!incomeStore.paySchedule" class="card income-hero">
       <p class="income-hero-warning">⚠️ Du har ikke satt lønningsdag ennå.</p>
       <p class="card-subtitle">Trykk på tannhjulet ⚙️ oppe til høyre for å legge den til.</p>
-      <router-link to="/settings" class="button-primary card-link-button">Åpne innstillinger</router-link>
+      <router-link to="/settings" class="button-primary card-link-button"
+        >Åpne innstillinger</router-link
+      >
     </section>
 
     <template v-else>
@@ -105,7 +90,9 @@ function trendMonthLabel(month: string): string {
         <router-link to="/income" class="income-hero-link">
           <span>
             <span class="income-hero-label">Lønn denne perioden</span>
-            <span class="income-hero-amount">{{ formatCurrencyNOK(periodIncomeTotal) }}</span>
+            <span class="amount-hero income-hero-amount">{{
+              formatCurrencyNOK(periodIncomeTotal)
+            }}</span>
           </span>
           <span class="income-hero-arrow" aria-hidden="true">›</span>
         </router-link>
@@ -168,16 +155,16 @@ function trendMonthLabel(month: string): string {
           <h2>Spareplaner</h2>
           <span class="card-header-arrow" aria-hidden="true">›</span>
         </router-link>
-        <div class="savings-preview-grid">
+        <div class="card-carousel">
           <router-link
             v-for="goal in savingsStore.goals"
             :key="goal.id"
             to="/savings"
-            class="savings-preview-card"
-            :style="{ background: SAVINGS_THEMES[goal.theme as SavingsGoalTheme].gradient }"
+            class="card-carousel-item savings-preview-card"
+            :style="{ background: SAVINGS_THEMES[goal.theme].gradient }"
           >
             <span class="savings-preview-icon" aria-hidden="true">
-              {{ SAVINGS_THEMES[goal.theme as SavingsGoalTheme].icon }}
+              {{ SAVINGS_THEMES[goal.theme].icon }}
             </span>
             <span class="savings-preview-name">{{ goal.name }}</span>
             <span class="savings-preview-amount">
@@ -199,7 +186,7 @@ function trendMonthLabel(month: string): string {
           <div class="trend-bar-track">
             <div class="trend-bar-fill" :style="{ height: trendBarHeight(entry.total) + '%' }" />
           </div>
-          <span class="trend-bar-label">{{ trendMonthLabel(entry.month) }}</span>
+          <span class="trend-bar-label">{{ formatMonthLabel(entry.month) }}</span>
         </div>
       </div>
     </router-link>
@@ -228,9 +215,6 @@ function trendMonthLabel(month: string): string {
 
 .income-hero-amount {
   display: block;
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
 .income-hero-arrow {
@@ -281,46 +265,7 @@ function trendMonthLabel(month: string): string {
   border: 2px solid var(--color-background);
 }
 
-.budget-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) 0;
-}
-
-.budget-row-income {
-  font-weight: 600;
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: var(--space-2);
-}
-
-.budget-row-remaining {
-  font-weight: 600;
-}
-
-.budget-split {
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  color: var(--color-success);
-}
-
-.savings-preview-grid {
-  display: flex;
-  gap: var(--space-3);
-  overflow-x: auto;
-  padding-bottom: var(--space-1);
-  margin-bottom: var(--space-3);
-}
-
 .savings-preview-card {
-  flex: 1;
-  min-width: 140px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
   color: #fff;
   text-decoration: none;
   box-shadow: var(--shadow-sm);
@@ -344,46 +289,4 @@ function trendMonthLabel(month: string): string {
   color: inherit;
   text-decoration: none;
 }
-
-.trend-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  height: 120px;
-}
-
-.trend-bar-col {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-1);
-}
-
-.trend-bar-track {
-  width: 100%;
-  max-width: 32px;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.trend-bar-fill {
-  width: 100%;
-  background: linear-gradient(180deg, var(--color-primary), var(--color-primary-hover));
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  transition: height 0.3s ease;
-}
-
-.trend-bar-label {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  text-transform: capitalize;
-}
-
 </style>

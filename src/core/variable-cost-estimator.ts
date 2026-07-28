@@ -1,5 +1,6 @@
 import { startOfMonth, subMonths } from 'date-fns'
 import type { CalculationResult } from './types/calculation-result'
+import { isWithinRange } from './date-range'
 
 export interface DatedAmount {
   amount: number
@@ -20,7 +21,7 @@ export function estimateVariableCost(
   const monthTotals = new Map<string, number>()
   for (const tx of transactions) {
     const occurred = new Date(tx.occurredOn)
-    if (occurred >= windowStart && occurred < windowEnd) {
+    if (isWithinRange(occurred, windowStart, windowEnd)) {
       const monthKey = `${occurred.getFullYear()}-${String(occurred.getMonth() + 1).padStart(2, '0')}`
       monthTotals.set(monthKey, (monthTotals.get(monthKey) ?? 0) + tx.amount)
     }

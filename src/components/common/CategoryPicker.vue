@@ -12,21 +12,10 @@ function handleChange(event: Event) {
 </script>
 
 <template>
-  <select class="form-field-select" :value="modelValue" @change="handleChange">
+  <select :value="modelValue" @change="handleChange">
     <option value="" disabled>Velg kategori</option>
     <option v-for="category in categoriesStore.categories" :key="category.id" :value="category.id">
       {{ category.icon }} {{ category.name }}
     </option>
   </select>
 </template>
-
-<style scoped>
-.form-field-select {
-  font-size: 1rem;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-}
-</style>

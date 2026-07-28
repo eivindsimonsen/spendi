@@ -7,8 +7,6 @@ declare module 'vue-router' {
   }
 }
 
-// Route table grows through the phased build-out (the real feature
-// routes land in Phases 2-5).
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   // Vue Router keeps the scroll position across navigations by default --

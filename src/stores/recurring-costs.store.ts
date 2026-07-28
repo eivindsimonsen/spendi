@@ -3,7 +3,6 @@ import { defineStore } from 'pinia'
 import {
   recurringCostsService,
   type CreateRecurringCostInput,
-  type UpdateRecurringCostInput,
 } from '@/services/recurring-costs.service'
 import { recurringCostSkipsService } from '@/services/recurring-cost-skips.service'
 import type { Database } from '@/types/database.types'
@@ -13,7 +12,6 @@ type RecurringCostSkip = Database['public']['Tables']['recurring_cost_skips']['R
 
 export const useRecurringCostsStore = defineStore('recurringCosts', () => {
   const recurringCosts = ref<RecurringCost[]>([])
-  const loaded = ref(false)
 
   // Skips for whichever period was last loaded via loadSkipsForPeriod --
   // only one period's worth is kept at a time (the current one).
@@ -21,7 +19,6 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
 
   async function load(planId: string) {
     recurringCosts.value = await recurringCostsService.listByPlan(planId)
-    loaded.value = true
   }
 
   async function loadSkipsForPeriod(periodStart: string) {
@@ -51,12 +48,6 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
     return created
   }
 
-  async function update(id: string, changes: UpdateRecurringCostInput) {
-    const updated = await recurringCostsService.update(id, changes)
-    recurringCosts.value = recurringCosts.value.map((cost) => (cost.id === id ? updated : cost))
-    return updated
-  }
-
   async function deactivate(id: string) {
     await recurringCostsService.deactivate(id)
     recurringCosts.value = recurringCosts.value.filter((cost) => cost.id !== id)
@@ -64,7 +55,6 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
 
   return {
     recurringCosts,
-    loaded,
     skippedThisPeriod,
     load,
     loadSkipsForPeriod,
@@ -72,7 +62,6 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
     skipForPeriod,
     unskipForPeriod,
     create,
-    update,
     deactivate,
   }
 })

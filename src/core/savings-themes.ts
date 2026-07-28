@@ -14,7 +14,11 @@ export const SAVINGS_THEMES: Record<SavingsGoalTheme, SavingsThemeInfo> = {
   wedding: { icon: '💍', label: 'Bryllup', gradient: 'linear-gradient(135deg, #f472b6, #facc15)' },
   home: { icon: '🏠', label: 'Bolig', gradient: 'linear-gradient(135deg, #34d399, #0ea5e9)' },
   car: { icon: '🚗', label: 'Bil', gradient: 'linear-gradient(135deg, #64748b, #1e293b)' },
-  education: { icon: '🎓', label: 'Utdanning', gradient: 'linear-gradient(135deg, #a78bfa, #6366f1)' },
+  education: {
+    icon: '🎓',
+    label: 'Utdanning',
+    gradient: 'linear-gradient(135deg, #a78bfa, #6366f1)',
+  },
   other: {
     icon: '🎯',
     label: 'Annet',

@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { getPayPeriod, getDaysUntilPayday } from './pay-schedule'
 
 describe('getPayPeriod', () => {
-  it('spans from this month\'s payday to next month\'s when reference date is after payday', () => {
+  it("spans from this month's payday to next month's when reference date is after payday", () => {
     const period = getPayPeriod(15, new Date(2026, 6, 20)) // 20 July 2026
     expect(period.start).toEqual(new Date(2026, 6, 15))
     expect(period.end).toEqual(new Date(2026, 7, 15))
   })
 
-  it('spans from last month\'s payday to this month\'s when reference date is before payday', () => {
+  it("spans from last month's payday to this month's when reference date is before payday", () => {
     const period = getPayPeriod(15, new Date(2026, 6, 10)) // 10 July 2026
     expect(period.start).toEqual(new Date(2026, 5, 15))
     expect(period.end).toEqual(new Date(2026, 6, 15))

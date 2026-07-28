@@ -76,7 +76,7 @@ async function respond(memberId: string, status: 'accepted' | 'declined') {
 
     <section v-if="plansStore.pendingInvites.length" class="card">
       <h2>Ventende invitasjoner</h2>
-      <div v-for="invite in plansStore.pendingInvites" :key="invite.id" class="pending-invite">
+      <div v-for="invite in plansStore.pendingInvites" :key="invite.id" class="list-row-block">
         <p>
           <strong>{{
             friendsStore.friendProfiles.get(invite.invited_by ?? '')?.display_name ?? 'Noen'
@@ -140,7 +140,11 @@ async function respond(memberId: string, status: 'accepted' | 'declined') {
         Ingen venner registrert ennå. Del koden din, eller løs inn en du har fått.
       </p>
       <ul v-else class="friend-list">
-        <li v-for="friendship in friendsStore.friendships" :key="friendship.id" class="friend-item">
+        <li
+          v-for="friendship in friendsStore.friendships"
+          :key="friendship.id"
+          class="list-row-block"
+        >
           <div class="friend-row">
             <span>
               {{
@@ -189,16 +193,6 @@ async function respond(memberId: string, status: 'accepted' | 'declined') {
 </template>
 
 <style scoped>
-.pending-invite {
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.pending-invite:first-child {
-  border-top: none;
-  padding-top: 0;
-}
-
 .pending-invite-actions {
   display: flex;
   gap: var(--space-2);
@@ -232,16 +226,6 @@ async function respond(memberId: string, status: 'accepted' | 'declined') {
   list-style: none;
   padding: 0;
   margin: 0;
-}
-
-.friend-item {
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.friend-item:first-child {
-  border-top: none;
-  padding-top: 0;
 }
 
 .friend-row {

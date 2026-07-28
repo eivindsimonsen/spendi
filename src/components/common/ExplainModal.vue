@@ -22,7 +22,7 @@ function formatValue(value: number | string, unit?: string): string {
     <template v-if="result">
       <p class="explain-summary">{{ result.summary }}</p>
       <div class="explain-steps">
-        <div v-for="(step, index) in result.steps" :key="index" class="explain-step">
+        <div v-for="(step, index) in result.steps" :key="index" class="list-row-block">
           <p class="explain-step-label">{{ step.label }}</p>
           <p v-if="step.formula" class="explain-step-formula">{{ step.formula }}</p>
           <ul v-if="step.inputs.length" class="explain-step-inputs">
@@ -41,16 +41,6 @@ function formatValue(value: number | string, unit?: string): string {
 .explain-summary {
   color: var(--color-text-muted);
   margin: 0 0 var(--space-4);
-}
-
-.explain-step {
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.explain-step:first-child {
-  border-top: none;
-  padding-top: 0;
 }
 
 .explain-step-label {

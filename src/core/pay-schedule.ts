@@ -21,7 +21,9 @@ export function getPayPeriod(payday: number, referenceDate: Date): PayPeriod {
   const thisMonthPayday = paydayInMonth(payday, referenceDate)
 
   const start =
-    referenceDate >= thisMonthPayday ? thisMonthPayday : paydayInMonth(payday, subMonths(referenceDate, 1))
+    referenceDate >= thisMonthPayday
+      ? thisMonthPayday
+      : paydayInMonth(payday, subMonths(referenceDate, 1))
 
   const end = paydayInMonth(payday, addMonths(start, 1))
 

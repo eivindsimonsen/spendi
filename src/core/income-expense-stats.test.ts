@@ -48,7 +48,9 @@ describe('calculateSavingsRate', () => {
   })
 
   it('returns null instead of dividing by zero when no income was logged', () => {
-    const months: MonthlyIncomeExpense[] = [{ month: '2026-06', income: 0, expense: 500, net: -500 }]
+    const months: MonthlyIncomeExpense[] = [
+      { month: '2026-06', income: 0, expense: 500, net: -500 },
+    ]
 
     expect(calculateSavingsRate(months)).toBeNull()
   })

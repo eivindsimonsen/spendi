@@ -21,12 +21,7 @@ function goTo(path: string) {
       <span class="tab-bar-label">Oversikt</span>
     </router-link>
 
-    <button
-      type="button"
-      class="tab-bar-fab"
-      aria-label="Legg til"
-      @click="isAddSheetOpen = true"
-    >
+    <button type="button" class="tab-bar-fab" aria-label="Legg til" @click="isAddSheetOpen = true">
       <span class="tab-bar-fab-icon" aria-hidden="true"></span>
     </button>
 

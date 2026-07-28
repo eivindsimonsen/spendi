@@ -16,7 +16,6 @@ export const useIncomePaymentsStore = defineStore('incomePayments', () => {
   // Wider-window history for the statistics page, kept separate from
   // currentPeriodPayments so loading one doesn't clobber the other.
   const historyPayments = ref<IncomePayment[]>([])
-  const historyLoaded = ref(false)
 
   async function loadForPeriod(planId: string, fromDate: string, toDate: string) {
     currentPeriodPayments.value = await incomePaymentsService.listInRange(planId, fromDate, toDate)
@@ -25,7 +24,6 @@ export const useIncomePaymentsStore = defineStore('incomePayments', () => {
 
   async function loadHistory(planId: string, fromDate: string, toDate: string) {
     historyPayments.value = await incomePaymentsService.listInRange(planId, fromDate, toDate)
-    historyLoaded.value = true
   }
 
   async function create(input: CreateIncomePaymentInput) {
@@ -51,7 +49,6 @@ export const useIncomePaymentsStore = defineStore('incomePayments', () => {
     currentPeriodPayments,
     loaded,
     historyPayments,
-    historyLoaded,
     loadForPeriod,
     loadHistory,
     create,

@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run format` — Prettier, writes in place
 
 Supabase (project is linked locally, no re-auth needed from this checkout):
+
 - `npx supabase migration new <name>` — new migration file under `supabase/migrations/`
 - `npx supabase db push --linked` — apply pending migrations to the live project
 - `npx supabase db query --linked "<sql>"` — ad-hoc query against the live database
@@ -40,7 +41,7 @@ views/components → stores (Pinia) → services → src/lib/supabase.ts
 
 This is the app's signature UX requirement: every calculated/estimated value shown to the user has an info icon that explains exactly how it was produced. Concretely:
 
-- `src/core/types/calculation-result.ts` defines `CalculationResult<T>` — `{ value, model, summary, steps[] }`. Every pure function in `src/core/` that produces a user-facing number returns this shape instead of a bare number, *including* trivial manual-entry values (tagged `model: 'manual-entry'`) — so the UI never has to special-case "was this calculated or not."
+- `src/core/types/calculation-result.ts` defines `CalculationResult<T>` — `{ value, model, summary, steps[] }`. Every pure function in `src/core/` that produces a user-facing number returns this shape instead of a bare number, _including_ trivial manual-entry values (tagged `model: 'manual-entry'`) — so the UI never has to special-case "was this calculated or not."
 - `src/components/common/ExplainableValue.vue` renders a formatted value plus an info icon; tapping it opens `ExplainModal.vue` (built on the generic `BaseModal.vue` bottom-sheet), which walks through the `steps[]` trace. One `CalculationResult` per displayed number, not one per page/section.
 - When adding a new calculated figure anywhere in the app, it must go through this same pattern — return a `CalculationResult`, don't just compute and display a number.
 

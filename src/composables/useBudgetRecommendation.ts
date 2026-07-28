@@ -1,6 +1,6 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import { startOfMonth, subMonths, format } from 'date-fns'
-import { useCurrentPlan } from './useCurrentPlan'
+import { useLoadOnActivePlan } from './useLoadOnActivePlan'
 import { useAuthStore } from '@/stores/auth.store'
 import { useIncomeStore } from '@/stores/income.store'
 import { useIncomePaymentsStore } from '@/stores/income-payments.store'
@@ -10,11 +10,12 @@ import { useTransactionsStore } from '@/stores/transactions.store'
 import { profilesService } from '@/services/profiles.service'
 import { getPayPeriod, getDaysUntilPayday } from '@/core/pay-schedule'
 import { buildBudgetRecommendation, type RecurringCostInput } from '@/core/budget-recommendation'
+import { isWithinRange } from '@/core/date-range'
 import type { DatedAmount } from '@/core/variable-cost-estimator'
-import type { BudgetModelId } from '@/core/discretionary-split'
 import type { Database } from '@/types/database.types'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
+type Plan = Database['public']['Tables']['plans']['Row']
 
 const LOOKBACK_MONTHS = 3
 // Wide enough to cover both the variable-cost lookback and the
@@ -22,11 +23,13 @@ const LOOKBACK_MONTHS = 3
 const HISTORY_MONTHS = 6
 
 // Everything needed to show "Anbefalt budsjett denne perioden" -- shared
-// by the Overview summary panel and the full Budget detail page, so the
-// period/income/recurring-cost/attribution logic lives in exactly one
-// place instead of drifting apart across two views.
-export function useBudgetRecommendation() {
-  const { currentPlan } = useCurrentPlan()
+// by the Overview summary panel and the full Budget detail page, and
+// Income, so the period/income/recurring-cost/attribution logic lives in
+// exactly one place instead of drifting apart across three views.
+//
+// Pass an already-resolved `currentPlan` ref if the caller also needs it
+// directly (see useLoadOnActivePlan) to avoid a redundant plans fetch.
+export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) {
   const authStore = useAuthStore()
   const incomeStore = useIncomeStore()
   const incomePaymentsStore = useIncomePaymentsStore()
@@ -34,20 +37,16 @@ export function useBudgetRecommendation() {
   const recurringCostsStore = useRecurringCostsStore()
   const transactionsStore = useTransactionsStore()
 
-  watch(
-    currentPlan,
-    async (plan) => {
-      if (!plan || !authStore.user) return
-      const sinceDate = format(startOfMonth(subMonths(new Date(), HISTORY_MONTHS)), 'yyyy-MM-dd')
-      await Promise.all([
-        incomeStore.load(plan.id, authStore.user.id),
-        categoriesStore.load(plan.id),
-        recurringCostsStore.load(plan.id),
-        transactionsStore.loadSince(plan.id, sinceDate),
-      ])
-    },
-    { immediate: true },
-  )
+  const { currentPlan } = useLoadOnActivePlan(async (planId) => {
+    if (!authStore.user) return
+    const sinceDate = format(startOfMonth(subMonths(new Date(), HISTORY_MONTHS)), 'yyyy-MM-dd')
+    await Promise.all([
+      incomeStore.load(planId, authStore.user.id),
+      categoriesStore.load(planId),
+      recurringCostsStore.load(planId),
+      transactionsStore.loadSince(planId, sinceDate),
+    ])
+  }, providedCurrentPlan)
 
   const currentPeriod = computed(() => {
     if (incomeStore.referencePayday == null) return null
@@ -101,7 +100,10 @@ export function useBudgetRecommendation() {
         planMemberProfiles.value.set(profile.id, profile)
       }
     },
-    { immediate: true, deep: true },
+    // No `deep: true` -- every mutating store action replaces the whole
+    // array (spread/map/filter), never mutates elements in place, so a
+    // shallow watch on the array refs already re-fires correctly.
+    { immediate: true },
   )
 
   function memberName(profileId: string): string {
@@ -130,13 +132,15 @@ export function useBudgetRecommendation() {
   const budgetRecommendation = computed(() => {
     if (!incomePaymentsStore.loaded || periodIncomeTotal.value === 0) return null
 
-    const recurringCostInputs: RecurringCostInput[] = recurringCostsStore.recurringCosts.map((cost) => ({
-      id: cost.id,
-      name: cost.name,
-      categoryId: cost.category_id,
-      amount: cost.amount,
-      isVariable: cost.is_variable,
-    }))
+    const recurringCostInputs: RecurringCostInput[] = recurringCostsStore.recurringCosts.map(
+      (cost) => ({
+        id: cost.id,
+        name: cost.name,
+        categoryId: cost.category_id,
+        amount: cost.amount,
+        isVariable: cost.is_variable,
+      }),
+    )
 
     const skippedIds = new Set(
       recurringCostsStore.skippedThisPeriod.map((skip) => skip.recurring_cost_id),
@@ -148,7 +152,7 @@ export function useBudgetRecommendation() {
       transactionsByCategory.value,
       LOOKBACK_MONTHS,
       new Date(),
-      currentPlan.value?.budget_model as BudgetModelId | undefined,
+      currentPlan.value?.budget_model,
       skippedIds,
     )
   })
@@ -173,11 +177,11 @@ export function useBudgetRecommendation() {
     const period = currentPeriod.value
     if (!period) return []
     return transactionsStore.recentTransactions
-      .filter((tx) => {
-        const occurred = new Date(tx.occurred_on)
-        const inPeriod = occurred >= period.start && occurred < period.end
-        return inPeriod && !recurringCostCategoryIds.value.has(tx.category_id)
-      })
+      .filter(
+        (tx) =>
+          isWithinRange(new Date(tx.occurred_on), period.start, period.end) &&
+          !recurringCostCategoryIds.value.has(tx.category_id),
+      )
       .sort((a, b) => b.amount - a.amount)
   })
 
@@ -185,7 +189,9 @@ export function useBudgetRecommendation() {
   // list behind a "show more" toggle.
   const sortedLineItems = computed(() => {
     if (!budgetRecommendation.value) return []
-    return [...budgetRecommendation.value.lineItems].sort((a, b) => b.estimate.value - a.estimate.value)
+    return [...budgetRecommendation.value.lineItems].sort(
+      (a, b) => b.estimate.value - a.estimate.value,
+    )
   })
 
   function categoryIcon(categoryId: string): string {

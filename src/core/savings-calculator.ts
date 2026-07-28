@@ -31,7 +31,8 @@ export function calculateRequiredMonthlySavings(
     return {
       value: remaining,
       model: 'savings-goal-due-soon',
-      summary: 'Måldatoen er denne måneden eller har passert, så hele det gjenstående beløpet trengs nå.',
+      summary:
+        'Måldatoen er denne måneden eller har passert, så hele det gjenstående beløpet trengs nå.',
       steps: [
         {
           label: 'Gjenstående beløp',

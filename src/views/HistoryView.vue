@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { format, startOfMonth, subMonths } from 'date-fns'
-import { useCurrentPlan } from '@/composables/useCurrentPlan'
+import { computed, ref } from 'vue'
+import { startOfMonth, subMonths, format } from 'date-fns'
+import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { useCategoriesStore } from '@/stores/categories.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
 import { useCategoryLabel } from '@/composables/useCategoryLabel'
 import { sumByCategory } from '@/core/transaction-stats'
-import { formatCurrencyNOK } from '@/core/format'
+import { formatCurrencyNOK, todayLocalDate } from '@/core/format'
 import type { Database } from '@/types/database.types'
 
 type Transaction = Database['public']['Tables']['transactions']['Row']
@@ -16,7 +16,6 @@ interface MonthGroup {
   transactions: Transaction[]
 }
 
-const { currentPlan } = useCurrentPlan()
 const categoriesStore = useCategoriesStore()
 const transactionsStore = useTransactionsStore()
 const { categoryLabel } = useCategoryLabel()
@@ -25,32 +24,31 @@ function defaultFromDate(): string {
   return format(startOfMonth(subMonths(new Date(), 5)), 'yyyy-MM-dd')
 }
 
-function today(): string {
-  return format(new Date(), 'yyyy-MM-dd')
-}
-
 const categoryId = ref('')
 const fromDate = ref(defaultFromDate())
-const toDate = ref(today())
+const toDate = ref(todayLocalDate())
 
-async function reload() {
-  if (!currentPlan.value) return
-  await transactionsStore.loadHistory(currentPlan.value.id, {
+function currentFilters() {
+  return {
     categoryId: categoryId.value || undefined,
     fromDate: fromDate.value || undefined,
     toDate: toDate.value || undefined,
-  })
+  }
 }
 
-watch(
-  currentPlan,
-  async (plan) => {
-    if (!plan) return
-    await categoriesStore.load(plan.id)
-    await reload()
-  },
-  { immediate: true },
-)
+// The loader stays self-contained (only uses the `planId` argument, never
+// the `currentPlan` ref returned below) -- immediate:true watchers fire
+// synchronously as part of setting them up, before that `const`
+// destructuring below has a value yet.
+const { currentPlan } = useLoadOnActivePlan(async (planId) => {
+  await categoriesStore.load(planId)
+  await transactionsStore.loadHistory(planId, currentFilters())
+})
+
+async function reload() {
+  if (!currentPlan.value) return
+  await transactionsStore.loadHistory(currentPlan.value.id, currentFilters())
+}
 
 const categoryTotals = computed(() =>
   sumByCategory(
@@ -142,7 +140,7 @@ function monthLabel(month: string): string {
       <div v-for="group in groupedByMonth" :key="group.month" class="history-month-group">
         <h3 class="history-month-heading">{{ monthLabel(group.month) }}</h3>
         <ul class="history-list">
-          <li v-for="tx in group.transactions" :key="tx.id" class="history-item">
+          <li v-for="tx in group.transactions" :key="tx.id" class="list-row">
             <div>
               <p class="history-item-category">{{ categoryLabel(tx.category_id) }}</p>
               <p class="card-subtitle">
@@ -164,26 +162,6 @@ function monthLabel(month: string): string {
   gap: var(--space-3);
 }
 
-.stat-bar-row {
-  display: grid;
-  grid-template-columns: 110px 1fr auto;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
-  font-size: 0.9rem;
-}
-
-.stat-bar-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stat-bar-value {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 .history-month-group {
   margin-bottom: var(--space-4);
 }
@@ -199,19 +177,6 @@ function monthLabel(month: string): string {
   list-style: none;
   padding: 0;
   margin: 0;
-}
-
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.history-item:first-child {
-  border-top: none;
-  padding-top: 0;
 }
 
 .history-item-category {

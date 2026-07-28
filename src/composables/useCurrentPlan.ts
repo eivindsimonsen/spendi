@@ -7,11 +7,11 @@ import { usePlansStore } from '@/stores/plans.store'
 // currently active -- see plans.store.ts for how that's chosen/switched.
 export function useCurrentPlan() {
   const store = usePlansStore()
-  const { activePlan, loaded } = storeToRefs(store)
+  const { activePlan } = storeToRefs(store)
 
   onMounted(() => {
     void store.loadMyPlans()
   })
 
-  return { currentPlan: activePlan, loaded }
+  return { currentPlan: activePlan }
 }

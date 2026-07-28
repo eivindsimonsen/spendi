@@ -35,8 +35,6 @@ const { loading, error, run } = useAsyncAction(async () => {
         {{ loading ? 'Logger inn …' : 'Logg inn' }}
       </button>
     </form>
-    <p class="auth-switch">
-      Ny her? <router-link to="/sign-up">Opprett konto</router-link>
-    </p>
+    <p class="auth-switch">Ny her? <router-link to="/sign-up">Opprett konto</router-link></p>
   </div>
 </template>

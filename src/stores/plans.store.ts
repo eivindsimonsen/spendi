@@ -21,7 +21,9 @@ export const usePlansStore = defineStore('plans', () => {
   const pendingInvites = ref<PlanMember[]>([])
   const pendingInvitePlans = ref<Map<string, Plan>>(new Map())
 
-  const activePlan = computed(() => myPlans.value.find((plan) => plan.id === activePlanId.value) ?? null)
+  const activePlan = computed(
+    () => myPlans.value.find((plan) => plan.id === activePlanId.value) ?? null,
+  )
 
   async function loadMyPlans() {
     myPlans.value = await plansService.listMine()

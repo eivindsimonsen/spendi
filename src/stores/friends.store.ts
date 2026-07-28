@@ -13,7 +13,6 @@ export const useFriendsStore = defineStore('friends', () => {
   const friendships = ref<Friendship[]>([])
   const friendProfiles = ref<Map<string, Profile>>(new Map())
   const myInviteCode = ref<FriendInviteCode | null>(null)
-  const loaded = ref(false)
 
   function otherProfileId(friendship: Friendship, myUserId: string): string {
     return friendship.requester_id === myUserId ? friendship.addressee_id : friendship.requester_id
@@ -31,8 +30,6 @@ export const useFriendsStore = defineStore('friends', () => {
     const otherIds = [...new Set(friendshipRows.map((f) => otherProfileId(f, myUserId)))]
     const profiles = otherIds.length ? await profilesService.listByIds(otherIds) : []
     friendProfiles.value = new Map(profiles.map((profile) => [profile.id, profile]))
-
-    loaded.value = true
   }
 
   async function generateInviteCode(myUserId: string) {
@@ -48,7 +45,6 @@ export const useFriendsStore = defineStore('friends', () => {
     friendships,
     friendProfiles,
     myInviteCode,
-    loaded,
     otherProfileId,
     load,
     generateInviteCode,

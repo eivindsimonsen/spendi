@@ -129,7 +129,7 @@ function handleActionClick() {
 
 .swipe-action-content {
   position: relative;
-  background: var(--glass-bg-strong);
+  background: transparent;
   touch-action: pan-y;
   user-select: none;
 }

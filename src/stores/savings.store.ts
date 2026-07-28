@@ -13,7 +13,6 @@ type SavingsContribution = Database['public']['Tables']['savings_contributions']
 export const useSavingsStore = defineStore('savings', () => {
   const goals = ref<SavingsGoal[]>([])
   const contributionsByGoal = ref<Map<string, SavingsContribution[]>>(new Map())
-  const loaded = ref(false)
 
   async function load(planId: string) {
     goals.value = await savingsGoalsService.listByPlan(planId)
@@ -24,8 +23,6 @@ export const useSavingsStore = defineStore('savings', () => {
       ),
     )
     contributionsByGoal.value = new Map(entries)
-
-    loaded.value = true
   }
 
   function contributionsTotal(goalId: string): number {
@@ -55,7 +52,6 @@ export const useSavingsStore = defineStore('savings', () => {
   return {
     goals,
     contributionsByGoal,
-    loaded,
     load,
     contributionsTotal,
     createGoal,

@@ -17,7 +17,9 @@ function dismiss() {
     <span class="update-toast-text">En ny versjon av Spendi er klar.</span>
     <div class="update-toast-actions">
       <button type="button" class="update-toast-button" @click="reload">Oppdater</button>
-      <button type="button" class="update-toast-dismiss" aria-label="Lukk" @click="dismiss">✕</button>
+      <button type="button" class="update-toast-dismiss" aria-label="Lukk" @click="dismiss">
+        ✕
+      </button>
     </div>
   </div>
 </template>

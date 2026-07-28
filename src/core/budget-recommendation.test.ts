@@ -31,7 +31,13 @@ describe('buildBudgetRecommendation', () => {
       ],
     ])
 
-    const result = buildBudgetRecommendation(35000, recurringCosts, transactionsByCategory, 3, referenceDate)
+    const result = buildBudgetRecommendation(
+      35000,
+      recurringCosts,
+      transactionsByCategory,
+      3,
+      referenceDate,
+    )
 
     expect(result.income.value).toBe(35000)
     expect(result.income.model).toBe('logged-income')
@@ -91,7 +97,14 @@ describe('buildBudgetRecommendation', () => {
   })
 
   it('applies the chosen budget model to the discretionary split', () => {
-    const result = buildBudgetRecommendation(40000, [], new Map(), 3, referenceDate, 'relaxed-70-20-10')
+    const result = buildBudgetRecommendation(
+      40000,
+      [],
+      new Map(),
+      3,
+      referenceDate,
+      'relaxed-70-20-10',
+    )
 
     expect(result.split.fun.value).toBeCloseTo(40000 * 0.7)
     expect(result.split.savings.value).toBeCloseTo(40000 * 0.2)

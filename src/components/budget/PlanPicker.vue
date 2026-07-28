@@ -18,11 +18,11 @@ async function handleDelete(id: string) {
 </script>
 
 <template>
-  <div class="plan-picker">
+  <div class="card-carousel plan-picker">
     <div
       v-for="plan in plansStore.myPlans"
       :key="plan.id"
-      class="plan-card"
+      class="card-carousel-item plan-card"
       :class="{ 'plan-card-active': plan.id === plansStore.activePlanId }"
       role="button"
       tabindex="0"
@@ -30,10 +30,12 @@ async function handleDelete(id: string) {
       @keydown.enter="plansStore.setActivePlan(plan.id)"
     >
       <div class="plan-card-header">
-        <span class="plan-card-icon" aria-hidden="true">{{ plan.type === 'individual' ? '👤' : '🤝' }}</span>
+        <span class="plan-card-icon" aria-hidden="true">{{
+          plan.type === 'individual' ? '👤' : '🤝'
+        }}</span>
         <button
           type="button"
-          class="plan-card-delete"
+          class="icon-button-remove"
           aria-label="Slett plan"
           @click.stop="handleDelete(plan.id)"
         >
@@ -48,22 +50,11 @@ async function handleDelete(id: string) {
 
 <style scoped>
 .plan-picker {
-  display: flex;
-  gap: var(--space-3);
-  overflow-x: auto;
-  padding-bottom: var(--space-1);
   margin-bottom: var(--space-4);
 }
 
 .plan-card {
-  flex: 1;
-  min-width: 140px;
-  display: flex;
-  flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-1);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-glass));
@@ -94,19 +85,6 @@ async function handleDelete(id: string) {
 
 .plan-card-icon {
   font-size: 1.4rem;
-}
-
-.plan-card-delete {
-  background: none;
-  border: none;
-  color: var(--color-text-subtle);
-  font-size: 0.9rem;
-  line-height: 1;
-  padding: var(--space-1);
-}
-
-.plan-card-delete:hover {
-  color: var(--color-danger);
 }
 
 .plan-card-name {
