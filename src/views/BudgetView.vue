@@ -13,6 +13,14 @@ import { calculateDailyAllowance, classifyDailyAllowance } from '@/core/daily-al
 import type { PayPeriod } from '@/core/pay-schedule'
 import { formatCurrencyNOK } from '@/core/format'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
+import SwipeAction from '@/components/common/SwipeAction.vue'
+
+// A fixed/manual cost or a variable cost with no history yet just
+// restates the number you set yourself -- nothing to explain there. Only
+// a real rolling-average calculation is worth an info icon.
+function hasCalculation(estimateModel: string): boolean {
+  return estimateModel === 'variable-cost-rolling-average-v1'
+}
 
 const { currentPlan } = useCurrentPlan()
 const plansStore = usePlansStore()
@@ -131,46 +139,34 @@ async function handleDeleteTransaction(id: string) {
             <div v-for="group in lineItemsByOwner" :key="group.ownerName" class="budget-owner-group">
               <p class="budget-owner-heading">{{ group.ownerName }}</p>
               <div class="budget-line-items">
-                <div
+                <SwipeAction
                   v-for="item in group.items"
                   :key="item.recurringCostId"
-                  class="budget-row"
-                  :class="{ 'budget-row-skipped': item.skipped }"
+                  :label="item.skipped ? 'Ta med igjen' : 'Hopp over'"
+                  @action="toggleRecurringCostSkip(item.recurringCostId)"
                 >
-                  <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
-                  <span class="budget-row-amount-actions">
-                    <ExplainableValue :result="item.estimate" />
-                    <button
-                      type="button"
-                      class="budget-row-skip-toggle"
-                      @click="toggleRecurringCostSkip(item.recurringCostId)"
-                    >
-                      {{ item.skipped ? 'Ta med igjen' : 'Hopp over' }}
-                    </button>
-                  </span>
-                </div>
+                  <div class="budget-row" :class="{ 'budget-row-skipped': item.skipped }">
+                    <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
+                    <ExplainableValue v-if="hasCalculation(item.estimate.model)" :result="item.estimate" />
+                    <span v-else>{{ formatCurrencyNOK(item.estimate.value) }}</span>
+                  </div>
+                </SwipeAction>
               </div>
             </div>
           </template>
           <div v-else class="budget-line-items">
-            <div
+            <SwipeAction
               v-for="item in sortedLineItems"
               :key="item.recurringCostId"
-              class="budget-row"
-              :class="{ 'budget-row-skipped': item.skipped }"
+              :label="item.skipped ? 'Ta med igjen' : 'Hopp over'"
+              @action="toggleRecurringCostSkip(item.recurringCostId)"
             >
-              <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
-              <span class="budget-row-amount-actions">
-                <ExplainableValue :result="item.estimate" />
-                <button
-                  type="button"
-                  class="budget-row-skip-toggle"
-                  @click="toggleRecurringCostSkip(item.recurringCostId)"
-                >
-                  {{ item.skipped ? 'Ta med igjen' : 'Hopp over' }}
-                </button>
-              </span>
-            </div>
+              <div class="budget-row" :class="{ 'budget-row-skipped': item.skipped }">
+                <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
+                <ExplainableValue v-if="hasCalculation(item.estimate.model)" :result="item.estimate" />
+                <span v-else>{{ formatCurrencyNOK(item.estimate.value) }}</span>
+              </div>
+            </SwipeAction>
           </div>
         </template>
         <p v-else class="card-subtitle">
@@ -382,16 +378,6 @@ async function handleDeleteTransaction(id: string) {
 
 .budget-row-skipped {
   opacity: 0.55;
-}
-
-.budget-row-skip-toggle {
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-  padding: 0;
 }
 
 .budget-line-items {
