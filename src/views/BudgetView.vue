@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { subDays } from 'date-fns'
 import { useCurrentPlan } from '@/composables/useCurrentPlan'
 import { usePlansStore } from '@/stores/plans.store'
@@ -9,7 +9,6 @@ import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
 import { usePeriodHistory } from '@/composables/usePeriodHistory'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { BUDGET_MODELS, DEFAULT_BUDGET_MODEL, type BudgetModelId } from '@/core/discretionary-split'
-import { calculateDailyAllowance, classifyDailyAllowance } from '@/core/daily-allowance'
 import type { PayPeriod } from '@/core/pay-schedule'
 import { formatCurrencyNOK, formatShortDate } from '@/core/format'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
@@ -33,8 +32,6 @@ function formatPeriodRange(period: PayPeriod): string {
 }
 
 const {
-  currentPeriod,
-  daysUntilPayday,
   budgetRecommendation,
   sortedLineItems,
   discretionaryTransactionsThisPeriod,
@@ -72,32 +69,6 @@ const {
 } = useAsyncAction(async (modelId: BudgetModelId) => {
   if (!currentPlan.value || currentPlan.value.budget_model === modelId) return
   await plansStore.updateBudgetModel(currentPlan.value.id, modelId)
-})
-
-const dailyAmountInput = ref<number | null>(null)
-
-const dailyAllowance = computed(() => {
-  if (dailyAmountInput.value == null || daysUntilPayday.value == null) return null
-  return calculateDailyAllowance(dailyAmountInput.value, daysUntilPayday.value)
-})
-
-// The recommended "Fri bruk" rate spread evenly across the whole period,
-// used as the baseline for judging whether the entered amount is
-// comfortable or tight -- ties the feedback to this couple's own budget
-// rather than an arbitrary fixed kr figure.
-const recommendedDailyRate = computed(() => {
-  if (!budgetRecommendation.value || !currentPeriod.value) return null
-  const periodLengthDays = Math.round(
-    (currentPeriod.value.end.getTime() - currentPeriod.value.start.getTime()) /
-      (1000 * 60 * 60 * 24),
-  )
-  if (periodLengthDays <= 0) return null
-  return budgetRecommendation.value.split.fun.value / periodLengthDays
-})
-
-const dailyAllowanceFeedback = computed(() => {
-  if (!dailyAllowance.value) return null
-  return classifyDailyAllowance(dailyAllowance.value.value, recommendedDailyRate.value)
 })
 
 async function handleDeleteTransaction(id: string) {
@@ -287,37 +258,6 @@ async function handleDeleteTransaction(id: string) {
         </div>
         <p v-if="saveModelError" class="form-error">{{ saveModelError }}</p>
       </section>
-
-      <section class="card">
-        <h2>Hva har jeg igjen per dag?</h2>
-        <p class="card-subtitle">
-          Skriv inn hvor mye du har igjen nå, så deler vi det på dagene som gjenstår til lønn.
-        </p>
-        <label class="form-field daily-allowance-field">
-          Beløp (kr)
-          <input
-            v-model.number="dailyAmountInput"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            step="1"
-            placeholder="F.eks. 1000"
-          />
-        </label>
-        <div v-if="dailyAllowance" class="daily-allowance-result">
-          <div class="budget-row">
-            <span>Til rådighet per dag</span>
-            <ExplainableValue :result="dailyAllowance" />
-          </div>
-          <p
-            v-if="dailyAllowanceFeedback"
-            class="daily-allowance-feedback"
-            :class="`daily-allowance-feedback-${dailyAllowanceFeedback.level}`"
-          >
-            {{ dailyAllowanceFeedback.message }}
-          </p>
-        </div>
-      </section>
     </template>
   </div>
 </template>
@@ -436,37 +376,5 @@ async function handleDeleteTransaction(id: string) {
 .budget-model-option-check {
   color: var(--color-primary);
   font-weight: 700;
-}
-
-.daily-allowance-field {
-  margin-top: var(--space-3);
-}
-
-.daily-allowance-result {
-  margin-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-2);
-}
-
-.daily-allowance-feedback {
-  margin: var(--space-1) 0 0;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.daily-allowance-feedback-comfortable {
-  color: var(--color-success);
-}
-
-.daily-allowance-feedback-moderate {
-  color: var(--color-warning);
-}
-
-.daily-allowance-feedback-tight {
-  color: var(--color-danger);
-}
-
-.daily-allowance-feedback-unknown {
-  color: var(--color-text-muted);
 }
 </style>

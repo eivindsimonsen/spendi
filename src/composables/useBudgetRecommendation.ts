@@ -58,6 +58,17 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     return getDaysUntilPayday(incomeStore.referencePayday, new Date())
   })
 
+  // Distinct from `daysUntilPayday` above: that one anchors to the
+  // earliest payday across the whole plan (so a shared period's
+  // boundary lines up for both partners), which would silently use a
+  // partner's payday here on a shared plan. A personal "how much do I
+  // have left per day" figure has to count down to *your own* next
+  // payday instead.
+  const daysUntilMyPayday = computed(() => {
+    if (incomeStore.paySchedule?.payday == null) return null
+    return getDaysUntilPayday(incomeStore.paySchedule.payday, new Date())
+  })
+
   watch(
     currentPeriod,
     async (period) => {
@@ -174,6 +185,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
   return {
     currentPeriod,
     daysUntilPayday,
+    daysUntilMyPayday,
     periodIncomeTotal,
     budgetRecommendation,
     sortedLineItems,

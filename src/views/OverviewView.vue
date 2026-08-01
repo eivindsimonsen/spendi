@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { subMonths, subDays, format } from 'date-fns'
 import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { usePlansStore } from '@/stores/plans.store'
@@ -7,6 +7,7 @@ import { useIncomeStore } from '@/stores/income.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
 import { useSavingsStore } from '@/stores/savings.store'
 import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
+import { calculateDailyAllowance, classifyDailyAllowance } from '@/core/daily-allowance'
 import { sumByMonth } from '@/core/transaction-stats'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
 import { formatCurrencyNOK, formatShortDate, formatMonthLabel } from '@/core/format'
@@ -22,8 +23,34 @@ const savingsStore = useSavingsStore()
 
 const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
 
-const { currentPeriod, daysUntilPayday, periodIncomeTotal, budgetRecommendation } =
+const { currentPeriod, daysUntilPayday, daysUntilMyPayday, periodIncomeTotal, budgetRecommendation } =
   useBudgetRecommendation(currentPlan)
+
+const dailyAmountInput = ref<number | null>(null)
+
+const dailyAllowance = computed(() => {
+  if (dailyAmountInput.value == null || daysUntilMyPayday.value == null) return null
+  return calculateDailyAllowance(dailyAmountInput.value, daysUntilMyPayday.value)
+})
+
+// The recommended "Fri bruk" rate spread evenly across the whole period,
+// used as the baseline for judging whether the entered amount is
+// comfortable or tight -- ties the feedback to this couple's own budget
+// rather than an arbitrary fixed kr figure.
+const recommendedDailyRate = computed(() => {
+  if (!budgetRecommendation.value || !currentPeriod.value) return null
+  const periodLengthDays = Math.round(
+    (currentPeriod.value.end.getTime() - currentPeriod.value.start.getTime()) /
+      (1000 * 60 * 60 * 24),
+  )
+  if (periodLengthDays <= 0) return null
+  return budgetRecommendation.value.split.fun.value / periodLengthDays
+})
+
+const dailyAllowanceFeedback = computed(() => {
+  if (!dailyAllowance.value) return null
+  return classifyDailyAllowance(dailyAllowance.value.value, recommendedDailyRate.value)
+})
 
 // Month-over-month trend, including months with zero spend so the shape
 // of the timeline is honest rather than skipping gaps.
@@ -106,6 +133,37 @@ function trendBarHeight(total: number): number {
             neste lønning
           </template>
         </p>
+      </section>
+
+      <section class="card">
+        <h2>Hva har jeg igjen per dag?</h2>
+        <p class="card-subtitle">
+          Skriv inn hvor mye du har igjen nå, så deler vi det på dagene som gjenstår til lønn.
+        </p>
+        <label class="form-field daily-allowance-field">
+          Beløp (kr)
+          <input
+            v-model.number="dailyAmountInput"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            step="1"
+            placeholder="F.eks. 1000"
+          />
+        </label>
+        <div v-if="dailyAllowance" class="daily-allowance-result">
+          <div class="budget-row">
+            <span>Til rådighet per dag</span>
+            <ExplainableValue :result="dailyAllowance" />
+          </div>
+          <p
+            v-if="dailyAllowanceFeedback"
+            class="daily-allowance-feedback"
+            :class="`daily-allowance-feedback-${dailyAllowanceFeedback.level}`"
+          >
+            {{ dailyAllowanceFeedback.message }}
+          </p>
+        </div>
       </section>
 
       <template v-if="budgetRecommendation">
@@ -288,5 +346,37 @@ function trendBarHeight(total: number): number {
   display: block;
   color: inherit;
   text-decoration: none;
+}
+
+.daily-allowance-field {
+  margin-top: var(--space-3);
+}
+
+.daily-allowance-result {
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+}
+
+.daily-allowance-feedback {
+  margin: var(--space-1) 0 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.daily-allowance-feedback-comfortable {
+  color: var(--color-success);
+}
+
+.daily-allowance-feedback-moderate {
+  color: var(--color-warning);
+}
+
+.daily-allowance-feedback-tight {
+  color: var(--color-danger);
+}
+
+.daily-allowance-feedback-unknown {
+  color: var(--color-text-muted);
 }
 </style>
