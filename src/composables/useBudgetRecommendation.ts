@@ -53,12 +53,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     return getPayPeriod(incomeStore.referencePayday, new Date())
   })
 
-  const daysUntilPayday = computed(() => {
-    if (incomeStore.referencePayday == null) return null
-    return getDaysUntilPayday(incomeStore.referencePayday, new Date())
-  })
-
-  // Distinct from `daysUntilPayday` above: that one anchors to the
+  // Distinct from `currentPeriod` above: that one anchors to the
   // earliest payday across the whole plan (so a shared period's
   // boundary lines up for both partners), which would silently use a
   // partner's payday here on a shared plan. A personal "how much do I
@@ -86,13 +81,14 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
   )
 
   // Resolves display names for whoever logged income, paid for a
-  // transaction, or created a recurring cost, so "who's responsible for
-  // this" can be shown without a second query per name.
+  // transaction, created a recurring cost, or set a payday, so "who's
+  // responsible for this" can be shown without a second query per name.
   const { nameFor: memberName } = useProfileNames(() => {
     const ids = new Set<string>()
     for (const payment of incomePaymentsStore.currentPeriodPayments) ids.add(payment.created_by)
     for (const tx of transactionsStore.recentTransactions) ids.add(tx.paid_by)
     for (const cost of recurringCostsStore.recurringCosts) ids.add(cost.created_by)
+    for (const profile of incomeStore.planPaydays) ids.add(profile.profile_id)
     return [...ids]
   })
 
@@ -100,6 +96,19 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     const cost = recurringCostsStore.recurringCosts.find((item) => item.id === recurringCostId)
     return cost ? memberName(cost.created_by) : 'Ukjent'
   }
+
+  // Every plan member's own countdown to their next payday -- unlike
+  // `currentPeriod`'s single shared boundary, this shows each person's
+  // actual payday, soonest first.
+  const memberPaydayCountdowns = computed(() =>
+    incomeStore.planPaydays
+      .map((profile) => ({
+        profileId: profile.profile_id,
+        name: memberName(profile.profile_id),
+        daysUntil: getDaysUntilPayday(profile.payday, new Date()),
+      }))
+      .sort((a, b) => a.daysUntil - b.daysUntil),
+  )
 
   const periodIncomeTotal = computed(() =>
     incomePaymentsStore.currentPeriodPayments.reduce((sum, payment) => sum + payment.amount, 0),
@@ -184,8 +193,8 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
 
   return {
     currentPeriod,
-    daysUntilPayday,
     daysUntilMyPayday,
+    memberPaydayCountdowns,
     periodIncomeTotal,
     budgetRecommendation,
     sortedLineItems,

@@ -4,8 +4,9 @@ import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { useSavingsStore } from '@/stores/savings.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useProfileNames } from '@/composables/useProfileNames'
 import { calculateRequiredMonthlySavings } from '@/core/savings-calculator'
-import { formatCurrencyNOK, todayLocalDate } from '@/core/format'
+import { formatCurrencyNOK, todayLocalDate, formatMonthName } from '@/core/format'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
 import type { SavingsGoalTheme } from '@/types/database.types'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
@@ -14,6 +15,18 @@ const savingsStore = useSavingsStore()
 const authStore = useAuthStore()
 
 const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
+
+const { nameFor } = useProfileNames(() => {
+  const ids = new Set<string>()
+  for (const contributions of savingsStore.contributionsByGoal.values()) {
+    for (const contribution of contributions) ids.add(contribution.created_by)
+  }
+  return [...ids]
+})
+
+function contributionsFor(goalId: string) {
+  return savingsStore.contributionsByGoal.get(goalId) ?? []
+}
 
 const goalName = ref('')
 const goalTargetAmount = ref<number | null>(null)
@@ -159,6 +172,23 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
         <ExplainableValue :result="requiredMonthlySavings(goal)" />
       </div>
 
+      <template v-if="contributionsFor(goal.id).length">
+        <p class="section-eyebrow savings-history-heading">Sparehistorikk</p>
+        <ul class="savings-history-list">
+          <li
+            v-for="contribution in contributionsFor(goal.id)"
+            :key="contribution.id"
+            class="list-row-block"
+          >
+            <p class="savings-history-line">
+              <strong>{{ nameFor(contribution.created_by) }}</strong> la til
+              {{ formatCurrencyNOK(contribution.amount) }} ·
+              {{ formatMonthName(new Date(contribution.occurred_on)) }}
+            </p>
+          </li>
+        </ul>
+      </template>
+
       <button
         v-if="contributingGoalId !== goal.id"
         type="button"
@@ -217,6 +247,21 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
 
 .savings-progress-track {
   margin-bottom: var(--space-2);
+}
+
+.savings-history-heading {
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.savings-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.savings-history-line {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .savings-contribute-button {

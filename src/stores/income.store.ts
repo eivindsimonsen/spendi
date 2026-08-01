@@ -46,5 +46,5 @@ export const useIncomeStore = defineStore('income', () => {
     return updated
   }
 
-  return { paySchedule, referencePayday, loaded, load, save }
+  return { paySchedule, planPaydays, referencePayday, loaded, load, save }
 })

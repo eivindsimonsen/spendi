@@ -23,8 +23,13 @@ const savingsStore = useSavingsStore()
 
 const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
 
-const { currentPeriod, daysUntilPayday, daysUntilMyPayday, periodIncomeTotal, budgetRecommendation } =
-  useBudgetRecommendation(currentPlan)
+const {
+  currentPeriod,
+  daysUntilMyPayday,
+  memberPaydayCountdowns,
+  periodIncomeTotal,
+  budgetRecommendation,
+} = useBudgetRecommendation(currentPlan)
 
 const dailyAmountInput = ref<number | null>(null)
 
@@ -129,10 +134,18 @@ function trendBarHeight(total: number): number {
           </template>
           <template v-else>
             {{ formatShortDate(currentPeriod.start) }} –
-            {{ formatShortDate(subDays(currentPeriod.end, 1)) }} · {{ daysUntilPayday }} dager til
-            neste lønning
+            {{ formatShortDate(subDays(currentPeriod.end, 1)) }}
           </template>
         </p>
+        <template v-if="currentPeriod && periodIncomeTotal > 0">
+          <p
+            v-for="item in memberPaydayCountdowns"
+            :key="item.profileId"
+            class="card-subtitle income-hero-countdown"
+          >
+            {{ item.daysUntil }} dager til {{ item.name }} får lønn
+          </p>
+        </template>
       </section>
 
       <section class="card">
@@ -273,6 +286,10 @@ function trendBarHeight(total: number): number {
 
 .income-hero-amount {
   display: block;
+}
+
+.income-hero-countdown {
+  margin: var(--space-1) 0 0;
 }
 
 .income-hero-arrow {
