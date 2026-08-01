@@ -1,20 +1,20 @@
-import { ref, computed, watch, type Ref } from 'vue'
+import { computed, watch, type Ref } from 'vue'
 import { startOfMonth, subMonths, format } from 'date-fns'
 import { useLoadOnActivePlan } from './useLoadOnActivePlan'
+import { useProfileNames } from './useProfileNames'
+import { useCategoryLabel } from './useCategoryLabel'
 import { useAuthStore } from '@/stores/auth.store'
 import { useIncomeStore } from '@/stores/income.store'
 import { useIncomePaymentsStore } from '@/stores/income-payments.store'
 import { useCategoriesStore } from '@/stores/categories.store'
 import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
-import { profilesService } from '@/services/profiles.service'
 import { getPayPeriod, getDaysUntilPayday } from '@/core/pay-schedule'
 import { buildBudgetRecommendation, type RecurringCostInput } from '@/core/budget-recommendation'
 import { isWithinRange } from '@/core/date-range'
 import type { DatedAmount } from '@/core/variable-cost-estimator'
 import type { Database } from '@/types/database.types'
 
-type Profile = Database['public']['Tables']['profiles']['Row']
 type Plan = Database['public']['Tables']['plans']['Row']
 
 const LOOKBACK_MONTHS = 3
@@ -77,38 +77,13 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
   // Resolves display names for whoever logged income, paid for a
   // transaction, or created a recurring cost, so "who's responsible for
   // this" can be shown without a second query per name.
-  const planMemberProfiles = ref(new Map<string, Profile>())
-
-  watch(
-    () =>
-      [
-        incomePaymentsStore.currentPeriodPayments,
-        transactionsStore.recentTransactions,
-        recurringCostsStore.recurringCosts,
-      ] as const,
-    async ([payments, transactions, recurringCosts]) => {
-      const ids = new Set<string>()
-      for (const payment of payments) ids.add(payment.created_by)
-      for (const tx of transactions) ids.add(tx.paid_by)
-      for (const cost of recurringCosts) ids.add(cost.created_by)
-
-      const missingIds = [...ids].filter((id) => !planMemberProfiles.value.has(id))
-      if (!missingIds.length) return
-
-      const profiles = await profilesService.listByIds(missingIds)
-      for (const profile of profiles) {
-        planMemberProfiles.value.set(profile.id, profile)
-      }
-    },
-    // No `deep: true` -- every mutating store action replaces the whole
-    // array (spread/map/filter), never mutates elements in place, so a
-    // shallow watch on the array refs already re-fires correctly.
-    { immediate: true },
-  )
-
-  function memberName(profileId: string): string {
-    return planMemberProfiles.value.get(profileId)?.display_name ?? 'Ukjent'
-  }
+  const { nameFor: memberName } = useProfileNames(() => {
+    const ids = new Set<string>()
+    for (const payment of incomePaymentsStore.currentPeriodPayments) ids.add(payment.created_by)
+    for (const tx of transactionsStore.recentTransactions) ids.add(tx.paid_by)
+    for (const cost of recurringCostsStore.recurringCosts) ids.add(cost.created_by)
+    return [...ids]
+  })
 
   function recurringCostOwnerName(recurringCostId: string): string {
     const cost = recurringCostsStore.recurringCosts.find((item) => item.id === recurringCostId)
@@ -194,9 +169,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     )
   })
 
-  function categoryIcon(categoryId: string): string {
-    return categoriesStore.categories.find((category) => category.id === categoryId)?.icon ?? ''
-  }
+  const { categoryIcon } = useCategoryLabel()
 
   return {
     currentPeriod,
