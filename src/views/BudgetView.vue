@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { subDays } from 'date-fns'
+import { ref, computed } from 'vue'
 import { useCurrentPlan } from '@/composables/useCurrentPlan'
 import { usePlansStore } from '@/stores/plans.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
@@ -9,10 +8,10 @@ import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
 import { usePeriodHistory } from '@/composables/usePeriodHistory'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { BUDGET_MODELS, DEFAULT_BUDGET_MODEL, type BudgetModelId } from '@/core/discretionary-split'
-import type { PayPeriod } from '@/core/pay-schedule'
-import { formatCurrencyNOK, formatShortDate } from '@/core/format'
+import { formatCurrencyNOK, formatMonthName } from '@/core/format'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import SwipeAction from '@/components/common/SwipeAction.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 
 // A fixed/manual cost or a variable cost with no history yet just
 // restates the number you set yourself -- nothing to explain there. Only
@@ -26,10 +25,6 @@ const plansStore = usePlansStore()
 const transactionsStore = useTransactionsStore()
 const { categoryLabel } = useCategoryLabel()
 const { periodSummaries } = usePeriodHistory(currentPlan)
-
-function formatPeriodRange(period: PayPeriod): string {
-  return `${formatShortDate(period.start)} – ${formatShortDate(subDays(period.end, 1))}`
-}
 
 const {
   budgetRecommendation,
@@ -61,6 +56,9 @@ const budgetModelList = Object.values(BUDGET_MODELS)
 const selectedModelId = computed<BudgetModelId>(
   () => currentPlan.value?.budget_model ?? DEFAULT_BUDGET_MODEL,
 )
+const selectedModel = computed(() => BUDGET_MODELS[selectedModelId.value])
+
+const isBudgetModelModalOpen = ref(false)
 
 const {
   loading: savingModel,
@@ -70,6 +68,14 @@ const {
   if (!currentPlan.value || currentPlan.value.budget_model === modelId) return
   await plansStore.updateBudgetModel(currentPlan.value.id, modelId)
 })
+
+// Closes the picker on a successful switch -- a single tap should be
+// enough -- but leaves it open on failure so the error message is
+// actually visible instead of vanishing with the sheet.
+async function selectModel(modelId: BudgetModelId) {
+  await runSelectModel(modelId)
+  if (!saveModelError.value) isBudgetModelModalOpen.value = false
+}
 
 async function handleDeleteTransaction(id: string) {
   const confirmed = window.confirm('Er du sikker på at du vil fjerne denne utgiften?')
@@ -95,7 +101,16 @@ async function handleDeleteTransaction(id: string) {
 
     <template v-else>
       <section class="card">
-        <h2>Anbefalt budsjett denne perioden</h2>
+        <div class="budget-panel-header">
+          <h2>Anbefalt budsjett denne perioden</h2>
+          <button
+            type="button"
+            class="button-link budget-model-trigger"
+            @click="isBudgetModelModalOpen = true"
+          >
+            {{ selectedModel.label }}
+          </button>
+        </div>
         <div class="budget-row budget-row-income">
           <span>Loggført lønn</span>
           <ExplainableValue :result="budgetRecommendation.income" />
@@ -221,7 +236,7 @@ async function handleDeleteTransaction(id: string) {
             :key="summary.period.start.toISOString()"
             class="summary-grid-row period-history-columns"
           >
-            <span class="summary-grid-row-label">{{ formatPeriodRange(summary.period) }}</span>
+            <span class="summary-grid-row-label">{{ formatMonthName(summary.period.start) }}</span>
             <span class="period-history-income">{{ formatCurrencyNOK(summary.income) }}</span>
             <span class="period-history-spent">{{ formatCurrencyNOK(summary.spent) }}</span>
             <span class="period-history-saved">{{ formatCurrencyNOK(summary.saved) }}</span>
@@ -229,8 +244,7 @@ async function handleDeleteTransaction(id: string) {
         </div>
       </section>
 
-      <section class="card">
-        <h2>Budsjettmodell</h2>
+      <BaseModal v-model="isBudgetModelModalOpen" title="Budsjettmodell">
         <p class="card-subtitle">
           Velg hvilken fordeling "Fri bruk / Sparing / Uforutsett" skal følge.
         </p>
@@ -242,7 +256,7 @@ async function handleDeleteTransaction(id: string) {
             class="budget-model-option"
             :class="{ 'budget-model-option-active': model.id === selectedModelId }"
             :disabled="savingModel"
-            @click="runSelectModel(model.id)"
+            @click="selectModel(model.id)"
           >
             <span class="budget-model-option-header">
               <strong>{{ model.label }}</strong>
@@ -257,12 +271,29 @@ async function handleDeleteTransaction(id: string) {
           </button>
         </div>
         <p v-if="saveModelError" class="form-error">{{ saveModelError }}</p>
-      </section>
+      </BaseModal>
     </template>
   </div>
 </template>
 
 <style scoped>
+.budget-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.budget-panel-header h2 {
+  margin-bottom: 0;
+}
+
+.budget-model-trigger {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .budget-section-heading {
   margin: 0 0 var(--space-1);
 }

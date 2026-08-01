@@ -33,3 +33,11 @@ export function formatMonthLabel(monthKey: string): string {
     month: 'short',
   })
 }
+
+// Full month name for a date, e.g. "juni" -- used where a period only
+// needs to be identified by which month it belongs to (a shared plan's
+// members can have different paydays, so a payday-to-payday date range
+// isn't a meaningful label for everyone -- the month it fell in is).
+export function formatMonthName(date: Date): string {
+  return date.toLocaleDateString('nb-NO', { month: 'long' })
+}

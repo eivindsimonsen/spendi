@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { formatCurrencyNOK, todayLocalDate, formatShortDate, formatMonthLabel } from './format'
+import {
+  formatCurrencyNOK,
+  todayLocalDate,
+  formatShortDate,
+  formatMonthLabel,
+  formatMonthName,
+} from './format'
 
 describe('formatCurrencyNOK', () => {
   it('formats a whole number of kroner with no decimals', () => {
@@ -27,5 +33,12 @@ describe('formatMonthLabel', () => {
     expect(formatMonthLabel('2026-07').toLowerCase()).toContain('jul')
     expect(formatMonthLabel('2026-01').toLowerCase()).toContain('jan')
     expect(formatMonthLabel('2026-12').toLowerCase()).toContain('des')
+  })
+})
+
+describe('formatMonthName', () => {
+  it('returns the full Norwegian month name', () => {
+    expect(formatMonthName(new Date(2026, 5, 12)).toLowerCase()).toBe('juni')
+    expect(formatMonthName(new Date(2026, 0, 1)).toLowerCase()).toBe('januar')
   })
 })
