@@ -44,4 +44,18 @@ export const incomeProfilesService = {
     if (error) throw error
     return data
   },
+
+  // Sets or clears (pass null) the caller's one-time "my pay arrived
+  // early" override for the current period -- see core/pay-schedule.ts.
+  async setPeriodOverride(planId: string, profileId: string, periodOverrideStart: string | null) {
+    const { data, error } = await supabase
+      .from('income_profiles')
+      .update({ period_override_start: periodOverrideStart })
+      .eq('plan_id', planId)
+      .eq('profile_id', profileId)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
 }

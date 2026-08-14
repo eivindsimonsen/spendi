@@ -2,10 +2,11 @@
 import { ref } from 'vue'
 import { useCurrentPlan } from '@/composables/useCurrentPlan'
 import { useIncomePaymentsStore } from '@/stores/income-payments.store'
+import { useIncomeStore } from '@/stores/income.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
-import { formatCurrencyNOK, todayLocalDate } from '@/core/format'
+import { formatCurrencyNOK, formatShortDate, todayLocalDate } from '@/core/format'
 import type { Database } from '@/types/database.types'
 
 type IncomePayment = Database['public']['Tables']['income_payments']['Row']
@@ -14,9 +15,27 @@ const INCOME_TYPES = ['Lønn', 'Bonus', 'Gave', 'Annet']
 
 const { currentPlan } = useCurrentPlan()
 const incomePaymentsStore = useIncomePaymentsStore()
+const incomeStore = useIncomeStore()
 const authStore = useAuthStore()
 
 const { periodIncomeTotal, memberName } = useBudgetRecommendation(currentPlan)
+
+// "Nei" just hides the suggestion for this visit -- not persisted, so it
+// may reappear on the next visit while the weekend-payday window is
+// still open. That's an acceptable minor friction over adding a whole
+// second piece of stored state just to remember a dismissal.
+const suggestionDismissed = ref(false)
+
+const { loading: confirmingSuggestion, run: confirmSuggestion } = useAsyncAction(async () => {
+  const suggestion = incomeStore.earlyPeriodSuggestion
+  if (!currentPlan.value || !authStore.user || !suggestion) return
+  await incomeStore.confirmEarlyPeriod(currentPlan.value.id, authStore.user.id, suggestion)
+})
+
+async function cancelOverride() {
+  if (!currentPlan.value || !authStore.user) return
+  await incomeStore.cancelPeriodOverride(currentPlan.value.id, authStore.user.id)
+}
 
 const isFormOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -82,6 +101,44 @@ async function removePayment(id: string) {
 
     <section class="card">
       <h2>Denne perioden</h2>
+
+      <div
+        v-if="incomeStore.earlyPeriodSuggestion && !suggestionDismissed"
+        class="period-suggestion"
+      >
+        <p class="period-suggestion-text">
+          ⚡ Lønningsdagen din faller på en helg denne måneden. Fikk du lønn allerede ({{
+            formatShortDate(incomeStore.earlyPeriodSuggestion)
+          }})?
+        </p>
+        <p v-if="currentPlan?.type === 'shared'" class="card-subtitle period-suggestion-note">
+          Påvirker ikke resten av Spendiplanen.
+        </p>
+        <div class="period-suggestion-actions">
+          <button
+            type="button"
+            class="button-primary"
+            :disabled="confirmingSuggestion"
+            @click="confirmSuggestion()"
+          >
+            {{ confirmingSuggestion ? 'Starter …' : 'Ja, start ny periode' }}
+          </button>
+          <button
+            type="button"
+            class="period-suggestion-decline"
+            :disabled="confirmingSuggestion"
+            @click="suggestionDismissed = true"
+          >
+            Nei
+          </button>
+        </div>
+      </div>
+
+      <p v-if="incomeStore.activeOverrideDate" class="card-subtitle period-override-notice">
+        Perioden startet tidlig ({{ formatShortDate(new Date(incomeStore.activeOverrideDate)) }}).
+        <button type="button" class="button-link" @click="cancelOverride">Angre</button>
+      </p>
+
       <p class="amount-hero income-total">{{ formatCurrencyNOK(periodIncomeTotal) }}</p>
 
       <p v-if="!incomePaymentsStore.currentPeriodPayments.length" class="card-subtitle">
@@ -143,6 +200,40 @@ async function removePayment(id: string) {
 </template>
 
 <style scoped>
+.period-suggestion {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg-strong);
+}
+
+.period-suggestion-text {
+  margin: 0 0 var(--space-2);
+}
+
+.period-suggestion-note {
+  margin: 0 0 var(--space-2);
+}
+
+.period-suggestion-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.period-suggestion-decline {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.period-override-notice {
+  margin: 0 0 var(--space-3);
+}
+
 .income-total {
   margin: 0 0 var(--space-3);
 }

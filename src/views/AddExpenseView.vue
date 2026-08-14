@@ -16,6 +16,8 @@ function handleCreated() {
 
 <template>
   <div class="container">
+    <router-link to="/" class="button-link back-link">← Tilbake til oversikt</router-link>
+
     <div class="page-header">
       <h1>Uforutsett utgift</h1>
     </div>

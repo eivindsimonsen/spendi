@@ -105,6 +105,16 @@ const groups = computed<CostGroup[]>(() => {
   return currentPlan.value?.type === 'shared' ? groupByOwner(costs) : groupByCategory(costs)
 })
 
+// A variable cost's amount is still worth showing -- it's the manual
+// estimate used as the average until real transaction history exists
+// (see core/variable-cost-estimator.ts), not just a placeholder.
+function costAmountLabel(cost: RecurringCost): string {
+  if (cost.is_variable) {
+    return cost.amount != null ? `varierer · ${formatCurrencyNOK(cost.amount)}/mnd` : 'varierer'
+  }
+  return cost.amount != null ? `${formatCurrencyNOK(cost.amount)}/mnd` : ''
+}
+
 function groupMeta(group: CostGroup): string {
   const parts = [`${group.items.length} ${group.items.length === 1 ? 'utgift' : 'utgifter'}`]
   if (group.fixedTotal > 0) parts.push(`${formatCurrencyNOK(group.fixedTotal)}/mnd`)
@@ -134,6 +144,8 @@ async function handleDeactivate(costId: string, costName: string) {
 
 <template>
   <div class="container">
+    <router-link to="/" class="button-link back-link">← Tilbake til oversikt</router-link>
+
     <div class="page-header">
       <h1>Faste utgifter</h1>
     </div>
@@ -176,8 +188,7 @@ async function handleDeactivate(costId: string, costName: string) {
               <p class="recurring-cost-name">{{ cost.name }}</p>
               <p class="card-subtitle">
                 {{ categoryLabel(cost.category_id) }}
-                <span v-if="cost.is_variable">· varierer</span>
-                <span v-else-if="cost.amount != null">· {{ formatCurrencyNOK(cost.amount) }}/mnd</span>
+                <span v-if="costAmountLabel(cost)">· {{ costAmountLabel(cost) }}</span>
               </p>
             </div>
             <button type="button" class="button-danger-link" @click="handleDeactivate(cost.id, cost.name)">

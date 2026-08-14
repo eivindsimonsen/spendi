@@ -9,7 +9,7 @@ import { useIncomePaymentsStore } from '@/stores/income-payments.store'
 import { useCategoriesStore } from '@/stores/categories.store'
 import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
-import { getPayPeriod, getDaysUntilPayday } from '@/core/pay-schedule'
+import { getDaysUntilPayday } from '@/core/pay-schedule'
 import { buildBudgetRecommendation, type RecurringCostInput } from '@/core/budget-recommendation'
 import { isWithinRange } from '@/core/date-range'
 import type { DatedAmount } from '@/core/variable-cost-estimator'
@@ -48,20 +48,23 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     ])
   }, providedCurrentPlan)
 
-  const currentPeriod = computed(() => {
-    if (incomeStore.referencePayday == null) return null
-    return getPayPeriod(incomeStore.referencePayday, new Date())
-  })
+  const currentPeriod = computed(() => incomeStore.currentPeriod)
 
   // Distinct from `currentPeriod` above: that one anchors to the
   // earliest payday across the whole plan (so a shared period's
   // boundary lines up for both partners), which would silently use a
   // partner's payday here on a shared plan. A personal "how much do I
   // have left per day" figure has to count down to *your own* next
-  // payday instead.
+  // payday instead -- correctly reflecting an active early-period
+  // override too (e.g. jumps from "1 day" to "~31" once confirmed).
   const daysUntilMyPayday = computed(() => {
     if (incomeStore.paySchedule?.payday == null) return null
-    return getDaysUntilPayday(incomeStore.paySchedule.payday, new Date())
+    const override = incomeStore.paySchedule.period_override_start
+    return getDaysUntilPayday(
+      incomeStore.paySchedule.payday,
+      new Date(),
+      override ? new Date(override) : null,
+    )
   })
 
   watch(
@@ -105,7 +108,11 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
       .map((profile) => ({
         profileId: profile.profile_id,
         name: memberName(profile.profile_id),
-        daysUntil: getDaysUntilPayday(profile.payday, new Date()),
+        daysUntil: getDaysUntilPayday(
+          profile.payday,
+          new Date(),
+          profile.period_override_start ? new Date(profile.period_override_start) : null,
+        ),
       }))
       .sort((a, b) => a.daysUntil - b.daysUntil),
   )

@@ -110,6 +110,8 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
 
 <template>
   <div class="container">
+    <router-link to="/" class="button-link back-link">← Tilbake til oversikt</router-link>
+
     <div class="page-header">
       <h1>Sparemål</h1>
     </div>
