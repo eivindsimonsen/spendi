@@ -124,10 +124,10 @@ export function buildBudgetRecommendation(
   const totalCommitted: CalculationResult<number> = {
     value: totalCommittedValue,
     model: 'sum-of-recurring-costs-v1',
-    summary: `Sum av ${committedItems.length} fast${committedItems.length === 1 ? '' : 'e'} kostnad${committedItems.length === 1 ? '' : 'er'}${skippedCount ? ` (${skippedCount} hoppet over denne perioden)` : ''}.`,
+    summary: `Sum av ${committedItems.length} fast${committedItems.length === 1 ? '' : 'e'} utgift${committedItems.length === 1 ? '' : 'er'}${skippedCount ? ` (${skippedCount} hoppet over denne perioden)` : ''}.`,
     steps: [
       {
-        label: 'Sum faste kostnader',
+        label: 'Sum faste utgifter',
         formula: committedItems.map((item) => item.name).join(' + ') || '0',
         inputs: committedItems.map((item) => ({
           label: item.name,
@@ -144,14 +144,14 @@ export function buildBudgetRecommendation(
   const remaining: CalculationResult<number> = {
     value: remainingValue,
     model: 'income-minus-committed-costs-v1',
-    summary: 'Det som er igjen av inntekten etter faste kostnader.',
+    summary: 'Det som er igjen av inntekten etter faste utgifter.',
     steps: [
       {
         label: 'Fritt til rådighet',
-        formula: 'loggført lønn − sum faste kostnader',
+        formula: 'loggført lønn − sum faste utgifter',
         inputs: [
           { label: 'Loggført lønn', value: income.value, unit: 'kr' },
-          { label: 'Sum faste kostnader', value: totalCommittedValue, unit: 'kr' },
+          { label: 'Sum faste utgifter', value: totalCommittedValue, unit: 'kr' },
         ],
         result: remainingValue,
       },

@@ -42,8 +42,8 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     const sinceDate = format(startOfMonth(subMonths(new Date(), HISTORY_MONTHS)), 'yyyy-MM-dd')
     await Promise.all([
       incomeStore.load(planId, authStore.user.id),
-      categoriesStore.load(planId),
-      recurringCostsStore.load(planId),
+      categoriesStore.load(),
+      recurringCostsStore.loadForPlan(planId),
       transactionsStore.loadSince(planId, sinceDate),
     ])
   }, providedCurrentPlan)
@@ -84,20 +84,20 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
   )
 
   // Resolves display names for whoever logged income, paid for a
-  // transaction, created a recurring cost, or set a payday, so "who's
+  // transaction, owns a recurring cost, or set a payday, so "who's
   // responsible for this" can be shown without a second query per name.
   const { nameFor: memberName } = useProfileNames(() => {
     const ids = new Set<string>()
     for (const payment of incomePaymentsStore.currentPeriodPayments) ids.add(payment.created_by)
     for (const tx of transactionsStore.recentTransactions) ids.add(tx.paid_by)
-    for (const cost of recurringCostsStore.recurringCosts) ids.add(cost.created_by)
+    for (const cost of recurringCostsStore.planCosts) ids.add(cost.owner_id)
     for (const profile of incomeStore.planPaydays) ids.add(profile.profile_id)
     return [...ids]
   })
 
   function recurringCostOwnerName(recurringCostId: string): string {
-    const cost = recurringCostsStore.recurringCosts.find((item) => item.id === recurringCostId)
-    return cost ? memberName(cost.created_by) : 'Ukjent'
+    const cost = recurringCostsStore.planCosts.find((item) => item.id === recurringCostId)
+    return cost ? memberName(cost.owner_id) : 'Ukjent'
   }
 
   // Every plan member's own countdown to their next payday -- unlike
@@ -134,15 +134,13 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
   const budgetRecommendation = computed(() => {
     if (!incomePaymentsStore.loaded || periodIncomeTotal.value === 0) return null
 
-    const recurringCostInputs: RecurringCostInput[] = recurringCostsStore.recurringCosts.map(
-      (cost) => ({
-        id: cost.id,
-        name: cost.name,
-        categoryId: cost.category_id,
-        amount: cost.amount,
-        isVariable: cost.is_variable,
-      }),
-    )
+    const recurringCostInputs: RecurringCostInput[] = recurringCostsStore.planCosts.map((cost) => ({
+      id: cost.id,
+      name: cost.name,
+      categoryId: cost.category_id,
+      amount: cost.amount,
+      isVariable: cost.is_variable,
+    }))
 
     const skippedIds = new Set(
       recurringCostsStore.skippedThisPeriod.map((skip) => skip.recurring_cost_id),
@@ -172,7 +170,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
   // their amount is already accounted for in "Faste utgifter", so this
   // is genuinely unplanned/discretionary spending, not a double-count.
   const recurringCostCategoryIds = computed(
-    () => new Set(recurringCostsStore.recurringCosts.map((cost) => cost.category_id)),
+    () => new Set(recurringCostsStore.planCosts.map((cost) => cost.category_id)),
   )
 
   const discretionaryTransactionsThisPeriod = computed(() => {

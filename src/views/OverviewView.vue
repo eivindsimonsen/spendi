@@ -213,12 +213,6 @@ function trendBarHeight(total: number): number {
             </div>
           </div>
         </section>
-
-        <section class="card">
-          <router-link to="/recurring-costs" class="button-primary card-link-button">
-            Faste utgifter
-          </router-link>
-        </section>
       </template>
 
       <section v-if="savingsStore.goals.length" class="card">

@@ -8,13 +8,13 @@ export interface CreateCategoryInput {
 }
 
 export const categoriesService = {
-  // System categories plus any custom categories belonging to this plan.
-  async listVisible(planId: string) {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .or(`is_system.eq.true,plan_id.eq.${planId}`)
-      .order('name')
+  // System categories plus every custom category from any plan you're a
+  // member of -- no plan filter, since the select policy already allows
+  // exactly those rows. A recurring cost follows you between plans, so
+  // its category has to resolve in all of them, not just the one it was
+  // created in.
+  async listVisible() {
+    const { data, error } = await supabase.from('categories').select('*').order('name')
     if (error) throw error
     return data
   },

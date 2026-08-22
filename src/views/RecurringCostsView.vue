@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
+import { computed, onMounted, ref } from 'vue'
 import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useCategoriesStore } from '@/stores/categories.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCategoryLabel } from '@/composables/useCategoryLabel'
-import { useProfileNames } from '@/composables/useProfileNames'
 import RecurringCostForm from '@/components/budget/RecurringCostForm.vue'
 import { formatCurrencyNOK } from '@/core/format'
 import type { Database } from '@/types/database.types'
@@ -13,73 +11,32 @@ import type { Database } from '@/types/database.types'
 type RecurringCost = Database['public']['Tables']['recurring_costs']['Row']
 
 interface CostGroup {
-  key: string
+  categoryId: string
   icon: string
   label: string
   items: RecurringCost[]
-  fixedTotal: number
+  monthlyTotal: number
   variableCount: number
 }
 
 const recurringCostsStore = useRecurringCostsStore()
 const categoriesStore = useCategoriesStore()
 const authStore = useAuthStore()
-const { categoryLabel, categoryIcon, categoryName } = useCategoryLabel()
+const { categoryIcon, categoryName } = useCategoryLabel()
 
-const { currentPlan } = useLoadOnActivePlan((planId) =>
-  Promise.all([recurringCostsStore.load(planId), categoriesStore.load(planId)]),
-)
+// Your costs belong to you, not to a plan, so unlike every other view
+// this one loads once and never follows the active plan.
+onMounted(async () => {
+  if (!authStore.user) return
+  await Promise.all([recurringCostsStore.loadMine(authStore.user.id), categoriesStore.load()])
+})
 
-const { nameFor } = useProfileNames(() =>
-  recurringCostsStore.recurringCosts.map((cost) => cost.created_by),
-)
-
-function subtotal(items: RecurringCost[]) {
-  let fixedTotal = 0
-  let variableCount = 0
-  for (const item of items) {
-    if (item.is_variable) variableCount++
-    else if (item.amount != null) fixedTotal += item.amount
-  }
-  return { fixedTotal, variableCount }
-}
-
-function sortByCategoryThenName(items: RecurringCost[]): RecurringCost[] {
-  return [...items].sort(
-    (a, b) =>
-      categoryName(a.category_id).localeCompare(categoryName(b.category_id)) ||
-      a.name.localeCompare(b.name),
-  )
-}
-
-function groupByOwner(costs: RecurringCost[]): CostGroup[] {
-  const byOwner = new Map<string, RecurringCost[]>()
-  for (const cost of costs) {
-    const existing = byOwner.get(cost.created_by) ?? []
-    existing.push(cost)
-    byOwner.set(cost.created_by, existing)
-  }
-
-  const groups = [...byOwner.entries()].map(([ownerId, items]) => ({
-    key: ownerId,
-    icon: '👤',
-    label: ownerId === authStore.user?.id ? 'Deg' : nameFor(ownerId),
-    items: sortByCategoryThenName(items),
-    ...subtotal(items),
-  }))
-
-  // Your own costs first, then everyone else alphabetically -- the whole
-  // point of grouping by owner is finding "which of these are mine".
-  return groups.sort((a, b) => {
-    if (a.key === authStore.user?.id) return -1
-    if (b.key === authStore.user?.id) return 1
-    return a.label.localeCompare(b.label)
-  })
-}
-
-function groupByCategory(costs: RecurringCost[]): CostGroup[] {
+// Grouped by category, which is the one axis that still separates a
+// personal list -- there's no "whose is this" question left to answer
+// here now that the page only ever shows your own costs.
+const groups = computed<CostGroup[]>(() => {
   const byCategory = new Map<string, RecurringCost[]>()
-  for (const cost of costs) {
+  for (const cost of recurringCostsStore.myCosts) {
     const existing = byCategory.get(cost.category_id) ?? []
     existing.push(cost)
     byCategory.set(cost.category_id, existing)
@@ -87,23 +44,34 @@ function groupByCategory(costs: RecurringCost[]): CostGroup[] {
 
   return [...byCategory.entries()]
     .map(([categoryId, items]) => ({
-      key: categoryId,
+      categoryId,
       icon: categoryIcon(categoryId),
       label: categoryName(categoryId),
       items: [...items].sort((a, b) => a.name.localeCompare(b.name)),
       ...subtotal(items),
     }))
     .sort((a, b) => a.label.localeCompare(b.label))
+})
+
+// A variable cost's amount is the monthly average you entered for it, so
+// it belongs in the total like any other -- the "varierer" note is what
+// marks that part of the sum as an estimate rather than a fixed bill.
+function subtotal(items: RecurringCost[]) {
+  let monthlyTotal = 0
+  let variableCount = 0
+  for (const item of items) {
+    if (item.is_variable) variableCount++
+    if (item.amount != null) monthlyTotal += item.amount
+  }
+  return { monthlyTotal, variableCount }
 }
 
-// A shared plan's whole problem is "is this mine or my partner's", so
-// group by owner there. An individual plan only ever has one owner, so
-// group by category instead -- still useful, and keeps a long list
-// scannable either way.
-const groups = computed<CostGroup[]>(() => {
-  const costs = recurringCostsStore.recurringCosts
-  return currentPlan.value?.type === 'shared' ? groupByOwner(costs) : groupByCategory(costs)
-})
+function groupMeta(group: CostGroup): string {
+  const parts = [`${group.items.length} ${group.items.length === 1 ? 'utgift' : 'utgifter'}`]
+  if (group.monthlyTotal > 0) parts.push(`${formatCurrencyNOK(group.monthlyTotal)}/mnd`)
+  if (group.variableCount > 0) parts.push(`${group.variableCount} varierer`)
+  return parts.join(' · ')
+}
 
 // A variable cost's amount is still worth showing -- it's the manual
 // estimate used as the average until real transaction history exists
@@ -115,28 +83,23 @@ function costAmountLabel(cost: RecurringCost): string {
   return cost.amount != null ? `${formatCurrencyNOK(cost.amount)}/mnd` : ''
 }
 
-function groupMeta(group: CostGroup): string {
-  const parts = [`${group.items.length} ${group.items.length === 1 ? 'utgift' : 'utgifter'}`]
-  if (group.fixedTotal > 0) parts.push(`${formatCurrencyNOK(group.fixedTotal)}/mnd`)
-  if (group.variableCount > 0) parts.push(`${group.variableCount} varierer`)
-  return parts.join(' · ')
-}
-
 const collapsedGroups = ref(new Set<string>())
 
-function isCollapsed(key: string): boolean {
-  return collapsedGroups.value.has(key)
+function isCollapsed(categoryId: string): boolean {
+  return collapsedGroups.value.has(categoryId)
 }
 
-function toggleGroup(key: string) {
+function toggleGroup(categoryId: string) {
   const next = new Set(collapsedGroups.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
+  if (next.has(categoryId)) next.delete(categoryId)
+  else next.add(categoryId)
   collapsedGroups.value = next
 }
 
 async function handleDeactivate(costId: string, costName: string) {
-  const confirmed = window.confirm(`Er du sikker på at du vil fjerne den faste utgiften "${costName}"?`)
+  const confirmed = window.confirm(
+    `Er du sikker på at du vil fjerne den faste utgiften "${costName}"?`,
+  )
   if (!confirmed) return
   await recurringCostsStore.deactivate(costId)
 }
@@ -144,30 +107,34 @@ async function handleDeactivate(costId: string, costName: string) {
 
 <template>
   <div class="container">
-    <router-link to="/" class="button-link back-link">← Tilbake til oversikt</router-link>
-
     <div class="page-header">
       <h1>Faste utgifter</h1>
+      <p class="card-subtitle">
+        Utgiftene dine følger deg inn i alle planene du er med i. Legg dem inn én gang her.
+      </p>
     </div>
 
     <section class="card">
       <h2>Legg til ny</h2>
-      <RecurringCostForm v-if="currentPlan" :plan-id="currentPlan.id" />
+      <RecurringCostForm />
     </section>
 
-    <section v-if="!recurringCostsStore.recurringCosts.length" class="card">
-      <p class="card-subtitle">Ingen faste kostnader registrert ennå.</p>
+    <section v-if="!recurringCostsStore.myCosts.length" class="card">
+      <p class="card-subtitle">
+        Ingen faste utgifter ennå. Legg inn den første over, så regner budsjettet med den i alle
+        planene dine.
+      </p>
     </section>
 
     <template v-else>
-      <p class="section-eyebrow recurring-cost-eyebrow">Dine faste kostnader</p>
+      <p class="section-eyebrow recurring-cost-eyebrow">Dine faste utgifter</p>
 
-      <section v-for="group in groups" :key="group.key" class="card recurring-cost-group">
+      <section v-for="group in groups" :key="group.categoryId" class="card recurring-cost-group">
         <button
           type="button"
           class="recurring-cost-group-header"
-          :aria-expanded="!isCollapsed(group.key)"
-          @click="toggleGroup(group.key)"
+          :aria-expanded="!isCollapsed(group.categoryId)"
+          @click="toggleGroup(group.categoryId)"
         >
           <span class="recurring-cost-group-icon" aria-hidden="true">{{ group.icon }}</span>
           <span class="recurring-cost-group-heading">
@@ -176,22 +143,23 @@ async function handleDeactivate(costId: string, costName: string) {
           </span>
           <span
             class="recurring-cost-group-chevron"
-            :class="{ 'recurring-cost-group-chevron-collapsed': isCollapsed(group.key) }"
+            :class="{ 'recurring-cost-group-chevron-collapsed': isCollapsed(group.categoryId) }"
             aria-hidden="true"
             >›</span
           >
         </button>
 
-        <ul v-if="!isCollapsed(group.key)" class="recurring-cost-list">
+        <ul v-if="!isCollapsed(group.categoryId)" class="recurring-cost-list">
           <li v-for="cost in group.items" :key="cost.id" class="list-row">
             <div>
               <p class="recurring-cost-name">{{ cost.name }}</p>
-              <p class="card-subtitle">
-                {{ categoryLabel(cost.category_id) }}
-                <span v-if="costAmountLabel(cost)">· {{ costAmountLabel(cost) }}</span>
-              </p>
+              <p v-if="costAmountLabel(cost)" class="card-subtitle">{{ costAmountLabel(cost) }}</p>
             </div>
-            <button type="button" class="button-danger-link" @click="handleDeactivate(cost.id, cost.name)">
+            <button
+              type="button"
+              class="button-danger-link"
+              @click="handleDeactivate(cost.id, cost.name)"
+            >
               Fjern
             </button>
           </li>

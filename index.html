@@ -10,7 +10,10 @@
     <!-- Lets the page's own background extend behind the iOS status bar/
          Dynamic Island in standalone PWA mode, instead of a hard-edged
          white bar (paired with the safe-area padding in base.css so real
-         content still clears that area). -->
+         content still clears that area). Both spellings are needed:
+         Safari still only honours the apple- prefixed one, Chrome warns
+         about it and reads the standardised name instead. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

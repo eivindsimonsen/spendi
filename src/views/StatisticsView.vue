@@ -26,7 +26,7 @@ useLoadOnActivePlan(async (planId) => {
   // are still included (matches how a pay period's end date works).
   const untilDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
   await Promise.all([
-    categoriesStore.load(planId),
+    categoriesStore.load(),
     transactionsStore.loadSince(planId, sinceDate),
     incomePaymentsStore.loadHistory(planId, sinceDate, untilDate),
     savingsStore.load(planId),

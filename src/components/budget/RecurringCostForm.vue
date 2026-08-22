@@ -5,9 +5,6 @@ import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 
-const props = defineProps<{ planId: string }>()
-const emit = defineEmits<{ created: [] }>()
-
 const recurringCostsStore = useRecurringCostsStore()
 const authStore = useAuthStore()
 
@@ -20,19 +17,17 @@ const { loading, error, run } = useAsyncAction(async () => {
   if (!name.value.trim() || !categoryId.value || !authStore.user) return
 
   await recurringCostsStore.create({
-    planId: props.planId,
+    ownerId: authStore.user.id,
     categoryId: categoryId.value,
     name: name.value.trim(),
     amount: amount.value,
     isVariable: isVariable.value,
-    createdBy: authStore.user.id,
   })
 
   name.value = ''
   categoryId.value = ''
   amount.value = null
   isVariable.value = false
-  emit('created')
 })
 </script>
 
@@ -56,7 +51,7 @@ const { loading, error, run } = useAsyncAction(async () => {
     </label>
     <p v-if="error" class="form-error">{{ error }}</p>
     <button type="submit" class="button-primary" :disabled="loading">
-      {{ loading ? 'Legger til …' : 'Legg til fast kostnad' }}
+      {{ loading ? 'Legger til …' : 'Legg til fast utgift' }}
     </button>
   </form>
 </template>

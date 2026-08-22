@@ -6,6 +6,18 @@ import BaseModal from '@/components/common/BaseModal.vue'
 const route = useRoute()
 const router = useRouter()
 
+// The add button sits in the middle of the bar, so the tabs are declared
+// as the two halves they actually render as.
+const tabsBeforeAdd = [
+  { to: '/', icon: '🏠', label: 'Oversikt' },
+  { to: '/savings', icon: '🎯', label: 'Spareplan' },
+]
+
+const tabsAfterAdd = [
+  { to: '/recurring-costs', icon: '🔁', label: 'Faste' },
+  { to: '/account', icon: '👤', label: 'Konto' },
+]
+
 const isAddSheetOpen = ref(false)
 
 function goTo(path: string) {
@@ -16,9 +28,16 @@ function goTo(path: string) {
 
 <template>
   <nav class="tab-bar" aria-label="Hovednavigasjon">
-    <router-link to="/" class="tab-bar-item" :class="{ 'tab-bar-item-active': route.path === '/' }">
-      <span class="tab-bar-icon" aria-hidden="true">🏠</span>
-      <span class="tab-bar-label">Oversikt</span>
+    <router-link
+      v-for="tab in tabsBeforeAdd"
+      :key="tab.to"
+      :to="tab.to"
+      class="tab-bar-item"
+      :class="{ 'tab-bar-item-active': route.path === tab.to }"
+      :aria-current="route.path === tab.to ? 'page' : undefined"
+    >
+      <span class="tab-bar-icon" aria-hidden="true">{{ tab.icon }}</span>
+      <span class="tab-bar-label">{{ tab.label }}</span>
     </router-link>
 
     <button type="button" class="tab-bar-fab" aria-label="Legg til" @click="isAddSheetOpen = true">
@@ -26,12 +45,15 @@ function goTo(path: string) {
     </button>
 
     <router-link
-      to="/account"
+      v-for="tab in tabsAfterAdd"
+      :key="tab.to"
+      :to="tab.to"
       class="tab-bar-item"
-      :class="{ 'tab-bar-item-active': route.path === '/account' }"
+      :class="{ 'tab-bar-item-active': route.path === tab.to }"
+      :aria-current="route.path === tab.to ? 'page' : undefined"
     >
-      <span class="tab-bar-icon" aria-hidden="true">👤</span>
-      <span class="tab-bar-label">Konto</span>
+      <span class="tab-bar-icon" aria-hidden="true">{{ tab.icon }}</span>
+      <span class="tab-bar-label">{{ tab.label }}</span>
     </router-link>
   </nav>
 
@@ -104,6 +126,7 @@ function goTo(path: string) {
 
 .tab-bar-item {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -111,8 +134,15 @@ function goTo(path: string) {
   padding: var(--space-3) 0;
   text-decoration: none;
   color: var(--color-text-muted);
-  font-size: 0.75rem;
   transition: color 0.15s ease;
+}
+
+.tab-bar-label {
+  /* Four tabs share the bar with the add button, so on a narrow phone
+     the longest label ("Spareplan") sets the floor -- it shrinks rather
+     than wrapping or clipping. */
+  font-size: clamp(0.65rem, 2.6vw, 0.75rem);
+  white-space: nowrap;
 }
 
 .tab-bar-item-active {

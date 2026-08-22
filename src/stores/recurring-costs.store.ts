@@ -11,18 +11,27 @@ type RecurringCost = Database['public']['Tables']['recurring_costs']['Row']
 type RecurringCostSkip = Database['public']['Tables']['recurring_cost_skips']['Row']
 
 export const useRecurringCostsStore = defineStore('recurringCosts', () => {
-  const recurringCosts = ref<RecurringCost[]>([])
+  // Two separate lists rather than one, because they answer two
+  // different questions: `myCosts` is the personal list you edit on
+  // Faste utgifter, `planCosts` is what the active plan's budget is
+  // built from -- yours plus any plan partner's.
+  const myCosts = ref<RecurringCost[]>([])
+  const planCosts = ref<RecurringCost[]>([])
 
   // Skips for whichever period was last loaded via loadSkipsForPeriod --
   // only one period's worth is kept at a time (the current one).
   const skippedThisPeriod = ref<RecurringCostSkip[]>([])
 
-  async function load(planId: string) {
-    recurringCosts.value = await recurringCostsService.listByPlan(planId)
+  async function loadMine(ownerId: string) {
+    myCosts.value = await recurringCostsService.listMine(ownerId)
+  }
+
+  async function loadForPlan(planId: string) {
+    planCosts.value = await recurringCostsService.listForPlan(planId)
   }
 
   async function loadSkipsForPeriod(periodStart: string) {
-    const ids = recurringCosts.value.map((cost) => cost.id)
+    const ids = planCosts.value.map((cost) => cost.id)
     skippedThisPeriod.value = await recurringCostSkipsService.listForPeriod(ids, periodStart)
   }
 
@@ -42,21 +51,26 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
     skippedThisPeriod.value = skippedThisPeriod.value.filter((item) => item.id !== skip.id)
   }
 
+  // Only `myCosts` is patched here: adding or removing a cost happens on
+  // Faste utgifter, and every view that reads `planCosts` refetches it
+  // when it mounts, so there's no second copy to keep in sync.
   async function create(input: CreateRecurringCostInput) {
     const created = await recurringCostsService.create(input)
-    recurringCosts.value = [...recurringCosts.value, created]
+    myCosts.value = [...myCosts.value, created]
     return created
   }
 
   async function deactivate(id: string) {
     await recurringCostsService.deactivate(id)
-    recurringCosts.value = recurringCosts.value.filter((cost) => cost.id !== id)
+    myCosts.value = myCosts.value.filter((cost) => cost.id !== id)
   }
 
   return {
-    recurringCosts,
+    myCosts,
+    planCosts,
     skippedThisPeriod,
-    load,
+    loadMine,
+    loadForPlan,
     loadSkipsForPeriod,
     isSkipped,
     skipForPeriod,

@@ -398,11 +398,10 @@ export type Database = {
           amount: number | null
           category_id: string
           created_at: string
-          created_by: string
           id: string
           is_variable: boolean
           name: string
-          plan_id: string
+          owner_id: string
           updated_at: string
         }
         Insert: {
@@ -410,11 +409,10 @@ export type Database = {
           amount?: number | null
           category_id: string
           created_at?: string
-          created_by: string
           id?: string
           is_variable?: boolean
           name: string
-          plan_id: string
+          owner_id: string
           updated_at?: string
         }
         Update: {
@@ -422,11 +420,10 @@ export type Database = {
           amount?: number | null
           category_id?: string
           created_at?: string
-          created_by?: string
           id?: string
           is_variable?: boolean
           name?: string
-          plan_id?: string
+          owner_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -439,16 +436,9 @@ export type Database = {
           },
           {
             foreignKeyName: "recurring_costs_created_by_fkey"
-            columns: ["created_by"]
+            columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recurring_costs_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "plans"
             referencedColumns: ["id"]
           },
         ]
@@ -618,11 +608,26 @@ export type Database = {
     Functions: {
       create_individual_plan: { Args: { p_name: string }; Returns: string }
       is_plan_member: { Args: { p_plan_id: string }; Returns: boolean }
+      list_plan_recurring_costs: {
+        Args: { p_plan_id: string }
+        Returns: {
+          active: boolean
+          amount: number | null
+          category_id: string
+          created_at: string
+          id: string
+          is_variable: boolean
+          name: string
+          owner_id: string
+          updated_at: string
+        }[]
+      }
       propose_shared_plan: {
         Args: { p_invitee_id: string; p_name: string }
         Returns: string
       }
       redeem_invite_code: { Args: { p_code: string }; Returns: string }
+      shares_plan_with: { Args: { p_profile_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

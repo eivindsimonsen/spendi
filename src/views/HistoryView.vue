@@ -41,7 +41,7 @@ function currentFilters() {
 // synchronously as part of setting them up, before that `const`
 // destructuring below has a value yet.
 const { currentPlan } = useLoadOnActivePlan(async (planId) => {
-  await categoriesStore.load(planId)
+  await categoriesStore.load()
   await transactionsStore.loadHistory(planId, currentFilters())
 })
 

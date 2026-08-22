@@ -63,12 +63,12 @@ function splitLineItem(
   return {
     value,
     model: `discretionary-split-${model.id}`,
-    summary: `${label}: ${sharePercent}% av det som er igjen etter faste kostnader (${model.label}).`,
+    summary: `${label}: ${sharePercent}% av det som er igjen etter faste utgifter (${model.label}).`,
     steps: [
       {
         label,
         formula: `${sharePercent}% × det som er igjen`,
-        inputs: [{ label: 'Igjen etter faste kostnader', value: remaining, unit: 'kr' }],
+        inputs: [{ label: 'Igjen etter faste utgifter', value: remaining, unit: 'kr' }],
         result: value,
       },
     ],

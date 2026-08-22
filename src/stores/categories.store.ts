@@ -8,8 +8,8 @@ type Category = Database['public']['Tables']['categories']['Row']
 export const useCategoriesStore = defineStore('categories', () => {
   const categories = ref<Category[]>([])
 
-  async function load(planId: string) {
-    categories.value = await categoriesService.listVisible(planId)
+  async function load() {
+    categories.value = await categoriesService.listVisible()
   }
 
   async function createCustom(input: CreateCategoryInput) {

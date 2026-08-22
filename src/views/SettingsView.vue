@@ -12,7 +12,7 @@ type Category = Database['public']['Tables']['categories']['Row']
 const authStore = useAuthStore()
 const categoriesStore = useCategoriesStore()
 
-const { currentPlan } = useLoadOnActivePlan((planId) => categoriesStore.load(planId))
+const { currentPlan } = useLoadOnActivePlan(() => categoriesStore.load())
 
 const customCategories = computed(() =>
   categoriesStore.categories.filter((category) => !category.is_system),
