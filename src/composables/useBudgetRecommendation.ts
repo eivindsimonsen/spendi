@@ -17,10 +17,9 @@ import type { Database } from '@/types/database.types'
 
 type Plan = Database['public']['Tables']['plans']['Row']
 
+// How far back a variable cost's average looks. Transactions are fetched
+// for exactly this window, which also always covers the current period.
 const LOOKBACK_MONTHS = 3
-// Wide enough to cover both the variable-cost lookback and the
-// statistics trend window, so the same fetch serves all of them.
-const HISTORY_MONTHS = 6
 
 // Everything needed to show "Anbefalt budsjett denne perioden" -- shared
 // by the Overview summary panel and the full Budget detail page, and
@@ -39,7 +38,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
 
   const { currentPlan } = useLoadOnActivePlan(async (planId) => {
     if (!authStore.user) return
-    const sinceDate = format(startOfMonth(subMonths(new Date(), HISTORY_MONTHS)), 'yyyy-MM-dd')
+    const sinceDate = format(startOfMonth(subMonths(new Date(), LOOKBACK_MONTHS)), 'yyyy-MM-dd')
     await Promise.all([
       incomeStore.load(planId, authStore.user.id),
       categoriesStore.load(),

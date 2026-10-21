@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import {
   recurringCostsService,
   type CreateRecurringCostInput,
+  type UpdateRecurringCostInput,
 } from '@/services/recurring-costs.service'
 import { recurringCostSkipsService } from '@/services/recurring-cost-skips.service'
 import type { Database } from '@/types/database.types'
@@ -51,13 +52,19 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
     skippedThisPeriod.value = skippedThisPeriod.value.filter((item) => item.id !== skip.id)
   }
 
-  // Only `myCosts` is patched here: adding or removing a cost happens on
-  // Faste utgifter, and every view that reads `planCosts` refetches it
-  // when it mounts, so there's no second copy to keep in sync.
+  // Only `myCosts` is patched here: adding, editing or removing a cost
+  // happens on Faste utgifter, and every view that reads `planCosts`
+  // refetches it when it mounts, so there's no second copy to keep in sync.
   async function create(input: CreateRecurringCostInput) {
     const created = await recurringCostsService.create(input)
     myCosts.value = [...myCosts.value, created]
     return created
+  }
+
+  async function update(id: string, changes: UpdateRecurringCostInput) {
+    const updated = await recurringCostsService.update(id, changes)
+    myCosts.value = myCosts.value.map((cost) => (cost.id === id ? updated : cost))
+    return updated
   }
 
   async function deactivate(id: string) {
@@ -76,6 +83,7 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
     skipForPeriod,
     unskipForPeriod,
     create,
+    update,
     deactivate,
   }
 })

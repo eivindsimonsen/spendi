@@ -11,10 +11,13 @@ type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
 type SavingsContribution = Database['public']['Tables']['savings_contributions']['Row']
 
 export const useSavingsStore = defineStore('savings', () => {
+  // `goals` only ever holds one plan's goals: whichever was last loaded.
+  const loadedPlanId = ref<string | null>(null)
   const goals = ref<SavingsGoal[]>([])
   const contributionsByGoal = ref<Map<string, SavingsContribution[]>>(new Map())
 
   async function load(planId: string) {
+    loadedPlanId.value = planId
     goals.value = await savingsGoalsService.listByPlan(planId)
 
     const entries = await Promise.all(
@@ -31,8 +34,12 @@ export const useSavingsStore = defineStore('savings', () => {
 
   async function createGoal(input: CreateSavingsGoalInput) {
     const created = await savingsGoalsService.create(input)
-    goals.value = [...goals.value, created]
-    contributionsByGoal.value.set(created.id, [])
+    // A goal added to some other plan than the one loaded doesn't belong
+    // in this list -- it shows up when that plan is loaded instead.
+    if (created.plan_id === loadedPlanId.value) {
+      goals.value = [...goals.value, created]
+      contributionsByGoal.value.set(created.id, [])
+    }
     return created
   }
 

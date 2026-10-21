@@ -8,6 +8,10 @@ export interface CreateRecurringCostInput {
   isVariable: boolean
 }
 
+// The owner is fixed once created -- RLS only lets you edit your own
+// costs anyway, so there's nothing to hand them over to.
+export type UpdateRecurringCostInput = Omit<CreateRecurringCostInput, 'ownerId'>
+
 export const recurringCostsService = {
   // A recurring cost belongs to a person, not a plan: this is the one
   // list you maintain, and it applies to every plan you're a member of.
@@ -44,6 +48,22 @@ export const recurringCostsService = {
         amount: input.amount,
         is_variable: input.isVariable,
       })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async update(id: string, changes: UpdateRecurringCostInput) {
+    const { data, error } = await supabase
+      .from('recurring_costs')
+      .update({
+        category_id: changes.categoryId,
+        name: changes.name,
+        amount: changes.amount,
+        is_variable: changes.isVariable,
+      })
+      .eq('id', id)
       .select()
       .single()
     if (error) throw error

@@ -50,7 +50,7 @@ export const transactionsService = {
     return data
   },
 
-  // Full history for the History & statistics view, optionally narrowed
+  // Full history for the History view, optionally narrowed
   // by category and/or date range.
   async listByPlan(planId: string, filters: TransactionFilters = {}) {
     let query = supabase.from('transactions').select('*').eq('plan_id', planId)

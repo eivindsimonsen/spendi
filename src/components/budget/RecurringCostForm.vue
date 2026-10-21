@@ -1,33 +1,54 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import CategoryPicker from '@/components/common/CategoryPicker.vue'
 import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import type { Database } from '@/types/database.types'
+
+type RecurringCost = Database['public']['Tables']['recurring_costs']['Row']
+
+// With `cost` set the form edits that cost instead of adding a new one.
+// Its fields are copied in once at setup, so the parent should remount
+// the form (e.g. via `:key`) when switching to a different cost.
+const props = defineProps<{ cost?: RecurringCost | null }>()
+const emit = defineEmits<{ saved: [] }>()
 
 const recurringCostsStore = useRecurringCostsStore()
 const authStore = useAuthStore()
 
-const name = ref('')
-const categoryId = ref('')
-const amount = ref<number | null>(null)
-const isVariable = ref(false)
+const name = ref(props.cost?.name ?? '')
+const categoryId = ref(props.cost?.category_id ?? '')
+const amount = ref<number | null>(props.cost?.amount ?? null)
+const isVariable = ref(props.cost?.is_variable ?? false)
 
 const { loading, error, run } = useAsyncAction(async () => {
   if (!name.value.trim() || !categoryId.value || !authStore.user) return
 
-  await recurringCostsStore.create({
-    ownerId: authStore.user.id,
+  const fields = {
     categoryId: categoryId.value,
     name: name.value.trim(),
-    amount: amount.value,
+    // v-model.number leaves '' behind when the field is cleared, which
+    // the numeric column would reject -- an empty field means "no amount".
+    amount: typeof amount.value === 'number' ? amount.value : null,
     isVariable: isVariable.value,
-  })
+  }
 
-  name.value = ''
-  categoryId.value = ''
-  amount.value = null
-  isVariable.value = false
+  if (props.cost) {
+    await recurringCostsStore.update(props.cost.id, fields)
+  } else {
+    await recurringCostsStore.create({ ownerId: authStore.user.id, ...fields })
+    name.value = ''
+    categoryId.value = ''
+    amount.value = null
+    isVariable.value = false
+  }
+  emit('saved')
+})
+
+const submitLabel = computed(() => {
+  if (props.cost) return loading.value ? 'Lagrer …' : 'Lagre endring'
+  return loading.value ? 'Legger til …' : 'Legg til fast utgift'
 })
 </script>
 
@@ -51,7 +72,7 @@ const { loading, error, run } = useAsyncAction(async () => {
     </label>
     <p v-if="error" class="form-error">{{ error }}</p>
     <button type="submit" class="button-primary" :disabled="loading">
-      {{ loading ? 'Legger til …' : 'Legg til fast utgift' }}
+      {{ submitLabel }}
     </button>
   </form>
 </template>

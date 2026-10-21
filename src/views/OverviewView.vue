@@ -1,24 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { subMonths, subDays, format } from 'date-fns'
+import { subDays } from 'date-fns'
 import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { usePlansStore } from '@/stores/plans.store'
 import { useIncomeStore } from '@/stores/income.store'
-import { useTransactionsStore } from '@/stores/transactions.store'
 import { useSavingsStore } from '@/stores/savings.store'
 import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
 import { calculateDailyAllowance, classifyDailyAllowance } from '@/core/daily-allowance'
-import { sumByMonth } from '@/core/transaction-stats'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
-import { formatCurrencyNOK, formatShortDate, formatMonthLabel } from '@/core/format'
+import { formatCurrencyNOK, formatShortDate } from '@/core/format'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import PlanPicker from '@/components/budget/PlanPicker.vue'
 
-const TREND_MONTHS = 6
-
 const plansStore = usePlansStore()
 const incomeStore = useIncomeStore()
-const transactionsStore = useTransactionsStore()
 const savingsStore = useSavingsStore()
 
 const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
@@ -56,33 +51,6 @@ const dailyAllowanceFeedback = computed(() => {
   if (!dailyAllowance.value) return null
   return classifyDailyAllowance(dailyAllowance.value.value, recommendedDailyRate.value)
 })
-
-// Month-over-month trend, including months with zero spend so the shape
-// of the timeline is honest rather than skipping gaps.
-const trendMonths = computed(() => {
-  const totalsByMonth = new Map(
-    sumByMonth(
-      transactionsStore.recentTransactions.map((tx) => ({
-        categoryId: tx.category_id,
-        amount: tx.amount,
-        occurredOn: tx.occurred_on,
-      })),
-    ).map((entry) => [entry.month, entry.total]),
-  )
-
-  const months: { month: string; total: number }[] = []
-  for (let i = TREND_MONTHS - 1; i >= 0; i--) {
-    const key = format(subMonths(new Date(), i), 'yyyy-MM')
-    months.push({ month: key, total: totalsByMonth.get(key) ?? 0 })
-  }
-  return months
-})
-
-const trendMax = computed(() => Math.max(1, ...trendMonths.value.map((entry) => entry.total)))
-
-function trendBarHeight(total: number): number {
-  return Math.round((total / trendMax.value) * 100)
-}
 </script>
 
 <template>
@@ -240,21 +208,6 @@ function trendBarHeight(total: number): number {
         </div>
       </section>
     </template>
-
-    <router-link to="/statistics" class="card trend-card">
-      <div class="card-header-link">
-        <h2>Utvikling siste {{ TREND_MONTHS }} måneder</h2>
-        <span class="card-header-arrow" aria-hidden="true">›</span>
-      </div>
-      <div class="trend-chart">
-        <div v-for="entry in trendMonths" :key="entry.month" class="trend-bar-col">
-          <div class="trend-bar-track">
-            <div class="trend-bar-fill" :style="{ height: trendBarHeight(entry.total) + '%' }" />
-          </div>
-          <span class="trend-bar-label">{{ formatMonthLabel(entry.month) }}</span>
-        </div>
-      </div>
-    </router-link>
   </div>
 </template>
 
@@ -351,12 +304,6 @@ function trendBarHeight(total: number): number {
 .savings-preview-amount {
   font-size: 0.8rem;
   opacity: 0.9;
-}
-
-.trend-card {
-  display: block;
-  color: inherit;
-  text-decoration: none;
 }
 
 .daily-allowance-field {

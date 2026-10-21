@@ -31,19 +31,17 @@ describe('summarizePeriod', () => {
       { amount: 9999, occurredOn: '2026-07-15' }, // excluded: period end is exclusive
       { amount: 9999, occurredOn: '2026-06-14' }, // excluded: before period start
     ]
-    const transactions: DatedAmount[] = [{ amount: 12000, occurredOn: '2026-06-20' }]
     const savingsContributions: DatedAmount[] = [{ amount: 2000, occurredOn: '2026-07-01' }]
 
-    const result = summarizePeriod(period, incomePayments, transactions, savingsContributions)
+    const result = summarizePeriod(period, incomePayments, savingsContributions)
 
     expect(result.income).toBe(35000)
-    expect(result.spent).toBe(12000)
     expect(result.saved).toBe(2000)
     expect(result.period).toBe(period)
   })
 
   it('returns all zeros when nothing falls in range', () => {
-    const result = summarizePeriod(period, [], [], [])
-    expect(result).toEqual({ period, income: 0, spent: 0, saved: 0 })
+    const result = summarizePeriod(period, [], [])
+    expect(result).toEqual({ period, income: 0, saved: 0 })
   })
 })

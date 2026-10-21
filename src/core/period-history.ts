@@ -23,16 +23,16 @@ export function getPastPeriods(payday: number, referenceDate: Date, count: numbe
 export interface PeriodSummary {
   period: PayPeriod
   income: number
-  spent: number
   saved: number
 }
 
 // Plain historical sums (not estimates), so no CalculationResult here --
-// these are exactly what was logged, nothing modeled or projected.
+// these are exactly what was logged, nothing modeled or projected. No
+// "spent" figure: logged expenses are only the odd unforeseen one, so a
+// sum of them would pass for total spending while being nowhere near it.
 export function summarizePeriod(
   period: PayPeriod,
   incomePayments: DatedAmount[],
-  transactions: DatedAmount[],
   savingsContributions: DatedAmount[],
 ): PeriodSummary {
   function sumInRange(items: DatedAmount[]): number {
@@ -44,7 +44,6 @@ export function summarizePeriod(
   return {
     period,
     income: sumInRange(incomePayments),
-    spent: sumInRange(transactions),
     saved: sumInRange(savingsContributions),
   }
 }

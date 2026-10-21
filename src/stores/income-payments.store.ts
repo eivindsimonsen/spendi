@@ -13,7 +13,7 @@ export const useIncomePaymentsStore = defineStore('incomePayments', () => {
   const currentPeriodPayments = ref<IncomePayment[]>([])
   const loaded = ref(false)
 
-  // Wider-window history for the statistics page, kept separate from
+  // Wider-window history for Budsjett's "Tidligere perioder", kept separate from
   // currentPeriodPayments so loading one doesn't clobber the other.
   const historyPayments = ref<IncomePayment[]>([])
 

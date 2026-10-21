@@ -42,11 +42,6 @@ const router = createRouter({
       component: () => import('@/views/HistoryView.vue'),
     },
     {
-      path: '/statistics',
-      name: 'statistics',
-      component: () => import('@/views/StatisticsView.vue'),
-    },
-    {
       path: '/friends',
       name: 'friends',
       component: () => import('@/views/FriendsView.vue'),

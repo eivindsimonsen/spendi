@@ -26,14 +26,6 @@ export function formatShortDate(date: Date): string {
   return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
 }
 
-// Short month name for a "yyyy-MM" key, e.g. a chart axis label.
-export function formatMonthLabel(monthKey: string): string {
-  const [year, monthNumber] = monthKey.split('-')
-  return new Date(Number(year), Number(monthNumber) - 1, 1).toLocaleDateString('nb-NO', {
-    month: 'short',
-  })
-}
-
 // Full month name for a date, e.g. "juni" -- used where a period only
 // needs to be identified by which month it belongs to (a shared plan's
 // members can have different paydays, so a payday-to-payday date range

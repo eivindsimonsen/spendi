@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { plansService } from '@/services/plans.service'
 import { planMembersService, type PlanMemberStatus } from '@/services/plan-members.service'
+import { useAuthStore } from '@/stores/auth.store'
 import type { BudgetModelId } from '@/core/discretionary-split'
 import type { Database } from '@/types/database.types'
 
@@ -14,6 +15,8 @@ type PlanMember = Database['public']['Tables']['plan_members']['Row']
 // follows whichever plan is selected, so there's one plan switcher
 // (see OverviewView) rather than a separate picker per feature.
 export const usePlansStore = defineStore('plans', () => {
+  const authStore = useAuthStore()
+
   const myPlans = ref<Plan[]>([])
   const activePlanId = ref<string | null>(null)
   const loaded = ref(false)
@@ -25,8 +28,11 @@ export const usePlansStore = defineStore('plans', () => {
     () => myPlans.value.find((plan) => plan.id === activePlanId.value) ?? null,
   )
 
+  // The auth guard initializes the session before any signed-in route
+  // renders, so the user is always known by the time a view loads plans.
   async function loadMyPlans() {
-    myPlans.value = await plansService.listMine()
+    if (!authStore.user) return
+    myPlans.value = await plansService.listMine(authStore.user.id)
 
     const activeStillValid = myPlans.value.some((plan) => plan.id === activePlanId.value)
     if (!activeStillValid) {

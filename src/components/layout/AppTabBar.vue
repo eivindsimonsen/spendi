@@ -59,7 +59,7 @@ function goTo(path: string) {
 
   <BaseModal v-model="isAddSheetOpen" title="Hva vil du legge til?">
     <div class="add-action-choices">
-      <button type="button" class="add-action-choice" @click="goTo('/recurring-costs')">
+      <button type="button" class="add-action-choice" @click="goTo('/recurring-costs?add=1')">
         <span class="add-action-icon" aria-hidden="true">🔁</span>
         <span class="add-action-text">
           <strong>Fast utgift</strong>
@@ -73,7 +73,7 @@ function goTo(path: string) {
           <small>Gjelder kun denne lønningsperioden</small>
         </span>
       </button>
-      <button type="button" class="add-action-choice" @click="goTo('/savings')">
+      <button type="button" class="add-action-choice" @click="goTo('/savings?add=1')">
         <span class="add-action-icon" aria-hidden="true">🎯</span>
         <span class="add-action-text">
           <strong>Opprett spareplan</strong>

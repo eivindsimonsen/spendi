@@ -4,8 +4,12 @@ import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useCategoriesStore } from '@/stores/categories.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCategoryLabel } from '@/composables/useCategoryLabel'
+import { useAddFromQuery } from '@/composables/useAddFromQuery'
 import RecurringCostForm from '@/components/budget/RecurringCostForm.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
+import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import { formatCurrencyNOK } from '@/core/format'
+import { sumRecurringCosts } from '@/core/recurring-costs-total'
 import type { Database } from '@/types/database.types'
 
 type RecurringCost = Database['public']['Tables']['recurring_costs']['Row']
@@ -15,8 +19,6 @@ interface CostGroup {
   icon: string
   label: string
   items: RecurringCost[]
-  monthlyTotal: number
-  variableCount: number
 }
 
 const recurringCostsStore = useRecurringCostsStore()
@@ -48,53 +50,41 @@ const groups = computed<CostGroup[]>(() => {
       icon: categoryIcon(categoryId),
       label: categoryName(categoryId),
       items: [...items].sort((a, b) => a.name.localeCompare(b.name)),
-      ...subtotal(items),
     }))
     .sort((a, b) => a.label.localeCompare(b.label))
 })
 
-// A variable cost's amount is the monthly average you entered for it, so
-// it belongs in the total like any other -- the "varierer" note is what
-// marks that part of the sum as an estimate rather than a fixed bill.
-function subtotal(items: RecurringCost[]) {
-  let monthlyTotal = 0
-  let variableCount = 0
-  for (const item of items) {
-    if (item.is_variable) variableCount++
-    if (item.amount != null) monthlyTotal += item.amount
-  }
-  return { monthlyTotal, variableCount }
+// Built from the grouped list rather than the store's, so the explanation
+// lists the costs in the same order as the page does.
+const monthlyTotal = computed(() =>
+  sumRecurringCosts(
+    groups.value.flatMap((group) =>
+      group.items.map((cost) => ({
+        name: cost.name,
+        amount: cost.amount,
+        isVariable: cost.is_variable,
+      })),
+    ),
+  ),
+)
+
+// One sheet for both adding and editing: `editingCost` is null while
+// adding. It's kept apart from the open flag so the form stays in the
+// sheet while it slides out, instead of vanishing the moment it closes.
+const editingCost = ref<RecurringCost | null>(null)
+const isFormOpen = ref(false)
+
+function startAdding() {
+  editingCost.value = null
+  isFormOpen.value = true
 }
 
-function groupMeta(group: CostGroup): string {
-  const parts = [`${group.items.length} ${group.items.length === 1 ? 'utgift' : 'utgifter'}`]
-  if (group.monthlyTotal > 0) parts.push(`${formatCurrencyNOK(group.monthlyTotal)}/mnd`)
-  if (group.variableCount > 0) parts.push(`${group.variableCount} varierer`)
-  return parts.join(' · ')
+function startEditing(cost: RecurringCost) {
+  editingCost.value = cost
+  isFormOpen.value = true
 }
 
-// A variable cost's amount is still worth showing -- it's the manual
-// estimate used as the average until real transaction history exists
-// (see core/variable-cost-estimator.ts), not just a placeholder.
-function costAmountLabel(cost: RecurringCost): string {
-  if (cost.is_variable) {
-    return cost.amount != null ? `varierer · ${formatCurrencyNOK(cost.amount)}/mnd` : 'varierer'
-  }
-  return cost.amount != null ? `${formatCurrencyNOK(cost.amount)}/mnd` : ''
-}
-
-const collapsedGroups = ref(new Set<string>())
-
-function isCollapsed(categoryId: string): boolean {
-  return collapsedGroups.value.has(categoryId)
-}
-
-function toggleGroup(categoryId: string) {
-  const next = new Set(collapsedGroups.value)
-  if (next.has(categoryId)) next.delete(categoryId)
-  else next.add(categoryId)
-  collapsedGroups.value = next
-}
+useAddFromQuery(startAdding)
 
 async function handleDeactivate(costId: string, costName: string) {
   const confirmed = window.confirm(
@@ -107,130 +97,160 @@ async function handleDeactivate(costId: string, costName: string) {
 
 <template>
   <div class="container">
-    <div class="page-header">
-      <h1>Faste utgifter</h1>
-      <p class="card-subtitle">
-        Utgiftene dine følger deg inn i alle planene du er med i. Legg dem inn én gang her.
-      </p>
+    <div class="page-header page-header-with-action">
+      <div>
+        <h1>Faste utgifter</h1>
+        <p class="card-subtitle recurring-cost-intro">Følger deg inn i alle planene du er med i.</p>
+      </div>
+      <button type="button" class="button-primary page-header-action" @click="startAdding">
+        + Ny
+      </button>
     </div>
-
-    <section class="card">
-      <h2>Legg til ny</h2>
-      <RecurringCostForm />
-    </section>
 
     <section v-if="!recurringCostsStore.myCosts.length" class="card">
       <p class="card-subtitle">
-        Ingen faste utgifter ennå. Legg inn den første over, så regner budsjettet med den i alle
+        Ingen faste utgifter ennå. Legg inn den første med «Ny», så regner budsjettet med den i alle
         planene dine.
       </p>
     </section>
 
-    <template v-else>
-      <p class="section-eyebrow recurring-cost-eyebrow">Dine faste utgifter</p>
-
-      <section v-for="group in groups" :key="group.categoryId" class="card recurring-cost-group">
-        <button
-          type="button"
-          class="recurring-cost-group-header"
-          :aria-expanded="!isCollapsed(group.categoryId)"
-          @click="toggleGroup(group.categoryId)"
-        >
-          <span class="recurring-cost-group-icon" aria-hidden="true">{{ group.icon }}</span>
-          <span class="recurring-cost-group-heading">
-            <span class="recurring-cost-group-label">{{ group.label }}</span>
-            <span class="card-subtitle">{{ groupMeta(group) }}</span>
-          </span>
-          <span
-            class="recurring-cost-group-chevron"
-            :class="{ 'recurring-cost-group-chevron-collapsed': isCollapsed(group.categoryId) }"
-            aria-hidden="true"
-            >›</span
-          >
-        </button>
-
-        <ul v-if="!isCollapsed(group.categoryId)" class="recurring-cost-list">
-          <li v-for="cost in group.items" :key="cost.id" class="list-row">
-            <div>
-              <p class="recurring-cost-name">{{ cost.name }}</p>
-              <p v-if="costAmountLabel(cost)" class="card-subtitle">{{ costAmountLabel(cost) }}</p>
-            </div>
-            <button
-              type="button"
-              class="button-danger-link"
-              @click="handleDeactivate(cost.id, cost.name)"
-            >
-              Fjern
-            </button>
+    <section v-else class="card">
+      <div v-for="group in groups" :key="group.categoryId" class="recurring-cost-group">
+        <p class="recurring-cost-category">
+          <span aria-hidden="true">{{ group.icon }}</span> {{ group.label }}
+        </p>
+        <ul class="recurring-cost-list">
+          <li v-for="cost in group.items" :key="cost.id" class="budget-row recurring-cost-row">
+            <span class="recurring-cost-name">
+              {{ cost.name }}
+              <span v-if="cost.is_variable" class="recurring-cost-tag">varierer</span>
+            </span>
+            <span class="recurring-cost-amount">
+              {{ cost.amount != null ? formatCurrencyNOK(cost.amount) : '–' }}
+            </span>
+            <span class="recurring-cost-actions">
+              <button
+                type="button"
+                class="recurring-cost-action"
+                :aria-label="`Rediger ${cost.name}`"
+                @click="startEditing(cost)"
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                class="recurring-cost-action recurring-cost-action-remove"
+                :aria-label="`Fjern ${cost.name}`"
+                @click="handleDeactivate(cost.id, cost.name)"
+              >
+                ✕
+              </button>
+            </span>
           </li>
         </ul>
-      </section>
-    </template>
+      </div>
+
+      <div class="budget-row recurring-cost-total">
+        <span>Totalt per måned</span>
+        <ExplainableValue :result="monthlyTotal" />
+      </div>
+    </section>
+
+    <BaseModal v-model="isFormOpen" :title="editingCost ? 'Rediger fast utgift' : 'Ny fast utgift'">
+      <RecurringCostForm
+        :key="editingCost?.id ?? 'new'"
+        :cost="editingCost"
+        @saved="isFormOpen = false"
+      />
+    </BaseModal>
   </div>
 </template>
 
 <style scoped>
-.recurring-cost-eyebrow {
-  margin: 0 0 var(--space-2);
+.recurring-cost-intro {
+  margin: var(--space-1) 0 0;
 }
 
-.recurring-cost-group {
-  padding: 0;
+.recurring-cost-group + .recurring-cost-group {
+  margin-top: var(--space-3);
 }
 
-.recurring-cost-group-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: none;
-  border: none;
-  padding: var(--space-4);
-  color: var(--color-text);
-  text-align: left;
-}
-
-.recurring-cost-group-header:active {
-  opacity: 0.7;
-}
-
-.recurring-cost-group-icon {
-  font-size: 1.4rem;
-  flex-shrink: 0;
-}
-
-.recurring-cost-group-heading {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.recurring-cost-group-label {
+.recurring-cost-category {
+  font-size: 0.8rem;
   font-weight: 700;
-}
-
-.recurring-cost-group-chevron {
-  font-size: 1.5rem;
-  color: var(--color-text-subtle);
-  flex-shrink: 0;
-  transform: rotate(90deg);
-  transition: transform 0.15s ease;
-}
-
-.recurring-cost-group-chevron-collapsed {
-  transform: rotate(0deg);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-1);
 }
 
 .recurring-cost-list {
   list-style: none;
-  padding: 0 var(--space-4) var(--space-4);
+  padding: 0;
   margin: 0;
 }
 
+.recurring-cost-row {
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
 .recurring-cost-name {
-  margin: 0 0 var(--space-1);
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Marks the amount as your own estimate rather than a fixed bill. */
+.recurring-cost-tag {
+  display: inline-block;
+  margin-left: var(--space-1);
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--color-primary-hover);
+  font-size: 0.7rem;
   font-weight: 600;
+  vertical-align: middle;
+}
+
+.recurring-cost-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.recurring-cost-actions {
+  display: flex;
+  flex-shrink: 0;
+}
+
+/* Icon-sized, but still a comfortable tap target on a phone. */
+.recurring-cost-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-subtle);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.recurring-cost-action:hover {
+  color: var(--color-primary);
+}
+
+.recurring-cost-action-remove:hover {
+  color: var(--color-danger);
+}
+
+.recurring-cost-total {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  font-weight: 700;
+  font-size: 1.05rem;
 }
 </style>

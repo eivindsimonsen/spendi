@@ -227,7 +227,6 @@ async function handleDeleteTransaction(id: string) {
         <div class="summary-grid-header period-history-columns">
           <span></span>
           <span>Inntekt</span>
-          <span>Brukt</span>
           <span>Spart</span>
         </div>
         <div class="period-history-list">
@@ -238,7 +237,6 @@ async function handleDeleteTransaction(id: string) {
           >
             <span class="summary-grid-row-label">{{ formatMonthName(summary.period.start) }}</span>
             <span class="period-history-income">{{ formatCurrencyNOK(summary.income) }}</span>
-            <span class="period-history-spent">{{ formatCurrencyNOK(summary.spent) }}</span>
             <span class="period-history-saved">{{ formatCurrencyNOK(summary.saved) }}</span>
           </div>
         </div>
@@ -353,15 +351,11 @@ async function handleDeleteTransaction(id: string) {
 }
 
 .period-history-columns {
-  grid-template-columns: 88px 1fr 1fr 1fr;
+  grid-template-columns: 88px 1fr 1fr;
 }
 
 .period-history-income {
   color: var(--color-success);
-}
-
-.period-history-spent {
-  color: var(--color-danger);
 }
 
 .period-history-saved {

@@ -194,6 +194,22 @@ button {
   margin-bottom: var(--space-4);
 }
 
+/* A page header with a compact primary action beside the title, e.g.
+   "+ Ny" on Faste utgifter and Sparemål -- put .page-header-action on
+   the button alongside .button-primary. */
+.page-header-with-action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.page-header-action {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.9rem;
+}
+
 /*
   Glass panel: translucent + blurred so the gradient mesh behind it shows
   through, a soft border, and a bright top rim (::before) to suggest a
@@ -308,7 +324,7 @@ button {
 }
 
 /* A breadcrumb back to the page a sub-page was opened from, e.g. "←
-   Tilbake til oversikt" atop Lønn, Statistikk or Venner. */
+   Tilbake til oversikt" atop Lønn, Historikk or Venner. */
 .back-link {
   display: inline-block;
   margin-bottom: var(--space-4);
@@ -390,56 +406,6 @@ button {
   border-radius: var(--radius-md);
   background-color: var(--glass-bg-strong);
   color: var(--color-text);
-}
-
-/*
-  Small mini bar-chart for a month-over-month trend. Default height
-  120px; add .trend-chart-tall for the 160px variant (Statistics, which
-  also labels each bar with its amount).
-*/
-.trend-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  height: 120px;
-}
-
-.trend-chart-tall {
-  height: 160px;
-}
-
-.trend-bar-col {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-1);
-}
-
-.trend-bar-track {
-  width: 100%;
-  max-width: 32px;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.trend-bar-fill {
-  width: 100%;
-  background: linear-gradient(180deg, var(--color-primary), var(--color-primary-hover));
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  transition: height 0.3s ease;
-}
-
-.trend-bar-label {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  text-transform: capitalize;
 }
 
 /* A label + progress bar + value row, e.g. "category share of spend". */

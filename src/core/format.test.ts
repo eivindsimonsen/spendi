@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  formatCurrencyNOK,
-  todayLocalDate,
-  formatShortDate,
-  formatMonthLabel,
-  formatMonthName,
-} from './format'
+import { formatCurrencyNOK, todayLocalDate, formatShortDate, formatMonthName } from './format'
 
 describe('formatCurrencyNOK', () => {
   it('formats a whole number of kroner with no decimals', () => {
@@ -25,14 +19,6 @@ describe('formatShortDate', () => {
     const result = formatShortDate(new Date(2026, 6, 15))
     expect(result).toContain('15')
     expect(result.toLowerCase()).toContain('jul')
-  })
-})
-
-describe('formatMonthLabel', () => {
-  it('parses a yyyy-MM key into the correct month, not off by one', () => {
-    expect(formatMonthLabel('2026-07').toLowerCase()).toContain('jul')
-    expect(formatMonthLabel('2026-01').toLowerCase()).toContain('jan')
-    expect(formatMonthLabel('2026-12').toLowerCase()).toContain('des')
   })
 })
 

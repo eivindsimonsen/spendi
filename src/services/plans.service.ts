@@ -2,9 +2,17 @@ import { supabase } from '@/lib/supabase'
 import type { BudgetModelId } from '@/core/discretionary-split'
 
 export const plansService = {
-  // RLS already scopes results to plans the current user is a member of.
-  async listMine() {
-    const { data, error } = await supabase.from('plans').select('*').order('created_at')
+  // Only plans you've accepted. RLS alone isn't enough here: its select
+  // policy also lets you read a plan you're merely invited to (or have
+  // declined), so an invite can show the plan's name -- but nothing in
+  // such a plan is readable or writable until you accept it.
+  async listMine(profileId: string) {
+    const { data, error } = await supabase
+      .from('plans')
+      .select('*, plan_members!inner(status)')
+      .eq('plan_members.profile_id', profileId)
+      .eq('plan_members.status', 'accepted')
+      .order('created_at')
     if (error) throw error
     return data
   },
