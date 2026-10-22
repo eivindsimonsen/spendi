@@ -15,6 +15,9 @@ export interface CalculationStep {
   formula?: string
   inputs: CalculationInput[]
   result: number
+  // What `result` counts, e.g. "perioder". Absent means kroner -- nearly
+  // every figure in the app is money, so that's the default.
+  unit?: string
 }
 
 export interface CalculationResult<T = number> {
@@ -24,4 +27,6 @@ export interface CalculationResult<T = number> {
   model: string
   summary: string
   steps: CalculationStep[]
+  // What `value` counts, e.g. "perioder". Absent means kroner.
+  unit?: string
 }

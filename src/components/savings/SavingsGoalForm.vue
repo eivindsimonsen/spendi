@@ -4,6 +4,7 @@ import { useSavingsStore } from '@/stores/savings.store'
 import { usePlansStore } from '@/stores/plans.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
+import { useSavingsProgress } from '@/composables/useSavingsProgress'
 import { formatPlanLabel } from '@/core/format'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
 import type { Database, SavingsGoalTheme } from '@/types/database.types'
@@ -19,6 +20,7 @@ const emit = defineEmits<{ saved: [goal: SavingsGoal] }>()
 const savingsStore = useSavingsStore()
 const plansStore = usePlansStore()
 const toastStore = useToastStore()
+const { withCelebrations } = useSavingsProgress()
 
 const name = ref(props.goal?.name ?? '')
 const targetAmount = ref<number | null>(props.goal?.target_amount ?? null)
@@ -49,15 +51,20 @@ const { loading, error, run } = useAsyncAction(async () => {
     theme: theme.value,
   }
 
-  // The plan is fixed once created -- see UpdateSavingsGoalInput.
-  if (props.goal) {
-    emit('saved', await savingsStore.updateGoal(props.goal.id, details))
+  // The plan is fixed once created -- see UpdateSavingsGoalInput. An
+  // edit can still earn a badge, e.g. lowering the target below what's
+  // already saved completes the goal.
+  const goal = props.goal
+  if (goal) {
+    emit('saved', await withCelebrations(() => savingsStore.updateGoal(goal.id, details)))
     return
   }
 
   const plan = selectedPlan.value
   if (!plan) return
-  const created = await savingsStore.createGoal({ planId: plan.id, ...details })
+  const created = await withCelebrations(() =>
+    savingsStore.createGoal({ planId: plan.id, ...details }),
+  )
   // Names the plan, since it may not be the one on screen.
   toastStore.show(`Sparemålet «${created.name}» er opprettet i ${formatPlanLabel(plan)}.`)
   emit('saved', created)

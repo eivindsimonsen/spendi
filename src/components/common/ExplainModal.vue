@@ -30,7 +30,10 @@ function formatValue(value: number | string, unit?: string): string {
               {{ input.label }}: {{ formatValue(input.value, input.unit) }}
             </li>
           </ul>
-          <p class="explain-step-result">= {{ formatCurrencyNOK(step.result) }}</p>
+          <p class="explain-step-result">
+            =
+            {{ step.unit ? formatValue(step.result, step.unit) : formatCurrencyNOK(step.result) }}
+          </p>
         </div>
       </div>
     </template>

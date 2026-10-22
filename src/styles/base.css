@@ -60,6 +60,20 @@ button {
   cursor: pointer;
 }
 
+/* Read out by screen readers but not shown -- for state that's otherwise
+   only conveyed visually (e.g. a greyed-out, locked badge). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -303,10 +317,20 @@ button {
   overflow: hidden;
 }
 
+/* Fills from empty when it first appears -- a small "look how far" moment
+   on every page with a bar -- then eases to each new width as it changes.
+   A `from`-only keyframe animates towards the inline width, whatever it is. */
 .progress-fill {
   background: linear-gradient(90deg, var(--color-primary-hover), var(--color-primary));
   height: 100%;
   transition: width 0.3s ease;
+  animation: progress-fill-grow 0.9s ease-out;
+}
+
+@keyframes progress-fill-grow {
+  from {
+    width: 0;
+  }
 }
 
 /* A plain-text, low-emphasis destructive action (e.g. "Fjern"). */

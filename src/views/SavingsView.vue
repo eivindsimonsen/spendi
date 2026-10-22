@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { useSavingsStore } from '@/stores/savings.store'
 import { usePlansStore } from '@/stores/plans.store'
 import { useAuthStore } from '@/stores/auth.store'
+import { useIncomeStore } from '@/stores/income.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProfileNames } from '@/composables/useProfileNames'
+import { useSavingsProgress } from '@/composables/useSavingsProgress'
 import { calculateRequiredMonthlySavings } from '@/core/savings-calculator'
 import { formatCurrencyNOK, todayLocalDate, formatMonthName, formatPlanLabel } from '@/core/format'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
@@ -20,8 +22,19 @@ type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
 const savingsStore = useSavingsStore()
 const plansStore = usePlansStore()
 const authStore = useAuthStore()
+const incomeStore = useIncomeStore()
 
-const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
+// The income store is only here for the plan's payday, which the streak
+// behind the "på rad" badges counts pay periods by.
+const { currentPlan } = useLoadOnActivePlan(async (planId) => {
+  if (!authStore.user) return
+  await Promise.all([savingsStore.load(planId), incomeStore.load(planId, authStore.user.id)])
+})
+
+const { achievements, withCelebrations } = useSavingsProgress()
+const unlockedCount = computed(
+  () => achievements.value.filter((achievement) => achievement.unlocked).length,
+)
 
 const { nameFor } = useProfileNames(() => {
   const ids = new Set<string>()
@@ -99,12 +112,13 @@ const {
   run: runContribute,
 } = useAsyncAction(async () => {
   if (!contributingGoalId.value || contributionAmount.value == null || !authStore.user) return
-  await savingsStore.addContribution({
+  const input = {
     goalId: contributingGoalId.value,
     amount: contributionAmount.value,
     occurredOn: contributionDate.value,
     createdBy: authStore.user.id,
-  })
+  }
+  await withCelebrations(() => savingsStore.addContribution(input), input.goalId)
   contributingGoalId.value = null
   contributionAmount.value = null
 })
@@ -172,6 +186,9 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
 
       <div class="savings-cover" :style="{ background: SAVINGS_THEMES[goal.theme].gradient }">
         <span class="savings-cover-icon">{{ SAVINGS_THEMES[goal.theme].icon }}</span>
+        <span v-if="progressPercent(goal.id, goal.target_amount) >= 100" class="savings-done-badge">
+          🏆 Fullført
+        </span>
       </div>
 
       <h2>{{ goal.name }}</h2>
@@ -242,6 +259,28 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
       </form>
     </section>
 
+    <section class="card">
+      <div class="savings-badges-header">
+        <h2>Merker</h2>
+        <span class="card-subtitle">{{ unlockedCount }} av {{ achievements.length }}</span>
+      </div>
+      <ul class="savings-badges">
+        <li
+          v-for="achievement in achievements"
+          :key="achievement.id"
+          class="savings-badge"
+          :class="{ 'savings-badge-locked': !achievement.unlocked }"
+        >
+          <span class="savings-badge-icon" aria-hidden="true">{{ achievement.icon }}</span>
+          <span class="savings-badge-title">{{ achievement.title }}</span>
+          <span class="savings-badge-description">{{ achievement.description }}</span>
+          <span class="visually-hidden">{{
+            achievement.unlocked ? 'Låst opp' : 'Ikke låst opp ennå'
+          }}</span>
+        </li>
+      </ul>
+    </section>
+
     <BaseModal v-model="isGoalFormOpen" :title="editingGoal ? 'Rediger sparemål' : 'Nytt sparemål'">
       <SavingsGoalForm
         :key="editingGoal?.id ?? 'new'"
@@ -253,10 +292,6 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
 </template>
 
 <style scoped>
-.savings-plan-note {
-  margin: var(--space-1) 0 0;
-}
-
 .savings-added-elsewhere {
   display: flex;
   align-items: center;
@@ -269,11 +304,88 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
 }
 
 .savings-cover {
+  position: relative;
   margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) var(--space-4);
   height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Same frosted backing as the cover's action buttons, so it reads on
+   every theme's gradient. */
+.savings-done-badge {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.savings-badges-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.savings-badges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .savings-badges {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.savings-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg-strong);
+  text-align: center;
+}
+
+.savings-badge-icon {
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.savings-badge-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.savings-badge-description {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Still readable, so it shows what there is to aim for -- just clearly
+   not earned yet. */
+.savings-badge-locked {
+  background: transparent;
+  opacity: 0.55;
+}
+
+.savings-badge-locked .savings-badge-icon {
+  filter: grayscale(1);
 }
 
 .savings-cover-icon {

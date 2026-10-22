@@ -6,6 +6,8 @@ import { usePlansStore } from '@/stores/plans.store'
 import { useIncomeStore } from '@/stores/income.store'
 import { useSavingsStore } from '@/stores/savings.store'
 import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
+import { useSavingsProgress } from '@/composables/useSavingsProgress'
+import { useCountUp } from '@/composables/useCountUp'
 import { calculateDailyAllowance, classifyDailyAllowance } from '@/core/daily-allowance'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
 import { formatCurrencyNOK, formatShortDate } from '@/core/format'
@@ -25,6 +27,17 @@ const {
   periodIncomeTotal,
   budgetRecommendation,
 } = useBudgetRecommendation(currentPlan)
+
+// Savings data comes from the loader above; the payday the streak counts
+// periods by comes from useBudgetRecommendation's income load.
+const { streak, totalSaved, motivation } = useSavingsProgress()
+
+const shownIncome = useCountUp(() => periodIncomeTotal.value)
+
+function goalPercent(goal: { id: string; target_amount: number }): number {
+  if (goal.target_amount <= 0) return 0
+  return Math.min(100, (savingsStore.contributionsTotal(goal.id) / goal.target_amount) * 100)
+}
 
 const dailyAmountInput = ref<number | null>(null)
 
@@ -90,9 +103,7 @@ const dailyAllowanceFeedback = computed(() => {
         <router-link to="/income" class="income-hero-link">
           <span>
             <span class="income-hero-label">Lønn denne perioden</span>
-            <span class="amount-hero income-hero-amount">{{
-              formatCurrencyNOK(periodIncomeTotal)
-            }}</span>
+            <span class="amount-hero income-hero-amount">{{ formatCurrencyNOK(shownIncome) }}</span>
           </span>
           <span class="income-hero-arrow" aria-hidden="true">›</span>
         </router-link>
@@ -192,6 +203,23 @@ const dailyAllowanceFeedback = computed(() => {
           <h2>Spareplaner</h2>
           <span class="card-header-arrow" aria-hidden="true">›</span>
         </router-link>
+        <p v-if="motivation" class="savings-motivation">{{ motivation }}</p>
+        <div class="budget-row">
+          <span>Spart til sammen</span>
+          <ExplainableValue :result="totalSaved" animate />
+        </div>
+        <div v-if="streak" class="budget-row savings-streak-row">
+          <span>
+            <span
+              class="savings-streak-flame"
+              :class="{ 'savings-streak-flame-out': streak.current.value === 0 }"
+              aria-hidden="true"
+              >🔥</span
+            >
+            Sparestreak
+          </span>
+          <ExplainableValue :result="streak.current" />
+        </div>
         <div class="card-carousel">
           <router-link
             v-for="goal in savingsStore.goals"
@@ -207,6 +235,12 @@ const dailyAllowanceFeedback = computed(() => {
             <span class="savings-preview-amount">
               {{ formatCurrencyNOK(savingsStore.contributionsTotal(goal.id)) }} /
               {{ formatCurrencyNOK(goal.target_amount) }}
+            </span>
+            <span class="progress-track savings-preview-track">
+              <span
+                class="progress-fill savings-preview-fill"
+                :style="{ width: `${goalPercent(goal)}%` }"
+              />
             </span>
           </router-link>
         </div>
@@ -308,6 +342,54 @@ const dailyAllowanceFeedback = computed(() => {
 .savings-preview-amount {
   font-size: 0.8rem;
   opacity: 0.9;
+}
+
+/* White on the theme gradient instead of the usual purple bar, which
+   would disappear into some of the gradients. */
+.savings-preview-track {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: var(--space-1);
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+
+.savings-preview-fill {
+  display: block;
+  background: #fff;
+}
+
+.savings-motivation {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+  color: var(--color-primary-hover);
+}
+
+.savings-streak-row {
+  padding-top: 0;
+}
+
+.savings-streak-flame {
+  display: inline-block;
+  animation: savings-streak-flicker 1.6s ease-in-out infinite;
+}
+
+/* Still there to show what's at stake, just unlit. */
+.savings-streak-flame-out {
+  animation: none;
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+@keyframes savings-streak-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.12) rotate(-4deg);
+  }
 }
 
 .daily-allowance-field {

@@ -7,6 +7,28 @@ export interface SavingsGoalInput {
   targetDate: Date
 }
 
+// Everything put towards a plan's savings goals, summed per goal so the
+// explanation shows where it went.
+export function calculateTotalSaved(
+  goals: readonly { name: string; savedAmount: number }[],
+): CalculationResult<number> {
+  const total = goals.reduce((sum, goal) => sum + goal.savedAmount, 0)
+
+  return {
+    value: total,
+    model: 'sum-of-savings-contributions-v1',
+    summary: 'Alt som er lagt inn som sparing på sparemålene i denne planen.',
+    steps: [
+      {
+        label: 'Spart til sammen',
+        formula: goals.map((goal) => goal.name).join(' + ') || '0',
+        inputs: goals.map((goal) => ({ label: goal.name, value: goal.savedAmount, unit: 'kr' })),
+        result: total,
+      },
+    ],
+  }
+}
+
 // Months remaining is floored (not rounded/ceiled) so the per-month
 // figure is a slight overestimate rather than an underestimate -- better
 // to save a bit more than the plan falls short by the target date.

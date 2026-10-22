@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateRequiredMonthlySavings } from './savings-calculator'
+import { calculateRequiredMonthlySavings, calculateTotalSaved } from './savings-calculator'
 
 const referenceDate = new Date(2026, 6, 15) // 15 July 2026
 
@@ -62,5 +62,22 @@ describe('calculateRequiredMonthlySavings', () => {
     )
 
     expect(result.value).toBe(3000)
+  })
+})
+
+describe('calculateTotalSaved', () => {
+  it('sums what has been saved across goals and lists each one', () => {
+    const result = calculateTotalSaved([
+      { name: 'Italia', savedAmount: 7000 },
+      { name: 'Bryllup', savedAmount: 5400 },
+    ])
+
+    expect(result.value).toBe(12400)
+    expect(result.steps[0]?.formula).toBe('Italia + Bryllup')
+    expect(result.unit).toBeUndefined()
+  })
+
+  it('is zero with no goals', () => {
+    expect(calculateTotalSaved([]).value).toBe(0)
   })
 })
