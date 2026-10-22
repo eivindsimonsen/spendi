@@ -136,12 +136,16 @@ async function handleDeleteTransaction(id: string) {
                   @action="toggleRecurringCostSkip(item.recurringCostId)"
                 >
                   <div class="budget-row" :class="{ 'budget-row-skipped': item.skipped }">
-                    <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
+                    <span class="budget-row-name">
+                      {{ categoryIcon(item.categoryId) }} {{ item.name }}
+                    </span>
                     <ExplainableValue
                       v-if="hasCalculation(item.estimate.model)"
                       :result="item.estimate"
                     />
-                    <span v-else>{{ formatCurrencyNOK(item.estimate.value) }}</span>
+                    <span v-else class="budget-row-amount">
+                      {{ formatCurrencyNOK(item.estimate.value) }}
+                    </span>
                   </div>
                 </SwipeAction>
               </div>
@@ -155,12 +159,16 @@ async function handleDeleteTransaction(id: string) {
               @action="toggleRecurringCostSkip(item.recurringCostId)"
             >
               <div class="budget-row" :class="{ 'budget-row-skipped': item.skipped }">
-                <span>{{ categoryIcon(item.categoryId) }} {{ item.name }}</span>
+                <span class="budget-row-name">
+                  {{ categoryIcon(item.categoryId) }} {{ item.name }}
+                </span>
                 <ExplainableValue
                   v-if="hasCalculation(item.estimate.model)"
                   :result="item.estimate"
                 />
-                <span v-else>{{ formatCurrencyNOK(item.estimate.value) }}</span>
+                <span v-else class="budget-row-amount">
+                  {{ formatCurrencyNOK(item.estimate.value) }}
+                </span>
               </div>
             </SwipeAction>
           </div>
@@ -337,6 +345,15 @@ async function handleDeleteTransaction(id: string) {
 
 .budget-row-skipped {
   opacity: 0.55;
+}
+
+/* Struck through on top of the fade, so a skipped cost still reads as an
+   expense rather than a muted heading. Aimed at the text itself rather
+   than the whole row, so the ⓘ beside the amount doesn't get a line too. */
+.budget-row-skipped .budget-row-name,
+.budget-row-skipped .budget-row-amount,
+.budget-row-skipped :deep(.explainable-value-amount) {
+  text-decoration: line-through;
 }
 
 .budget-line-items {

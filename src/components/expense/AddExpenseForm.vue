@@ -42,7 +42,15 @@ const { loading, error, run } = useAsyncAction(async () => {
   <form class="form" @submit.prevent="run()">
     <label class="form-field">
       Beløp (kr)
-      <input v-model.number="amount" type="number" min="0" step="1" required autofocus />
+      <input
+        v-model.number="amount"
+        type="number"
+        inputmode="numeric"
+        min="0"
+        step="1"
+        required
+        autofocus
+      />
     </label>
     <label class="form-field">
       Kategori

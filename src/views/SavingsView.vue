@@ -15,6 +15,7 @@ import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 
 type Plan = Database['public']['Tables']['plans']['Row']
+type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
 
 const savingsStore = useSavingsStore()
 const plansStore = usePlansStore()
@@ -47,6 +48,10 @@ function contributionsFor(goalId: string) {
   return savingsStore.contributionsByGoal.get(goalId) ?? []
 }
 
+// One sheet for both adding and editing: `editingGoalId` is null while
+// adding. It's kept apart from the open flag so the sheet's title and
+// fields don't flip back to "new" while it slides out.
+const editingGoalId = ref<string | null>(null)
 const isGoalFormOpen = ref(false)
 const goalName = ref('')
 const goalTargetAmount = ref<number | null>(null)
@@ -68,7 +73,21 @@ const selectedGoalPlan = computed(
 )
 
 function openGoalForm() {
+  editingGoalId.value = null
   goalPlanId.value = null
+  goalName.value = ''
+  goalTargetAmount.value = null
+  goalTargetDate.value = ''
+  goalTheme.value = 'other'
+  isGoalFormOpen.value = true
+}
+
+function startEditingGoal(goal: SavingsGoal) {
+  editingGoalId.value = goal.id
+  goalName.value = goal.name
+  goalTargetAmount.value = goal.target_amount
+  goalTargetDate.value = goal.target_date
+  goalTheme.value = goal.theme
   isGoalFormOpen.value = true
 }
 
@@ -86,29 +105,31 @@ watch(
 )
 
 const {
-  loading: creatingGoal,
-  error: createGoalError,
-  run: runCreateGoal,
+  loading: savingGoal,
+  error: saveGoalError,
+  run: runSaveGoal,
 } = useAsyncAction(async () => {
-  const plan = selectedGoalPlan.value
   const name = goalName.value.trim()
-  if (!plan || !name || goalTargetAmount.value == null || !goalTargetDate.value) return
+  if (!name || goalTargetAmount.value == null || !goalTargetDate.value) return
 
-  await savingsStore.createGoal({
-    planId: plan.id,
+  const details = {
     name,
     targetAmount: goalTargetAmount.value,
     targetDate: goalTargetDate.value,
     theme: goalTheme.value,
-  })
-  addedElsewhere.value =
-    plan.id === currentPlan.value?.id
-      ? null
-      : { goalName: name, planId: plan.id, planLabel: planLabel(plan) }
-  goalName.value = ''
-  goalTargetAmount.value = null
-  goalTargetDate.value = ''
-  goalTheme.value = 'other'
+  }
+
+  if (editingGoalId.value) {
+    await savingsStore.updateGoal(editingGoalId.value, details)
+  } else {
+    const plan = selectedGoalPlan.value
+    if (!plan) return
+    await savingsStore.createGoal({ planId: plan.id, ...details })
+    addedElsewhere.value =
+      plan.id === currentPlan.value?.id
+        ? null
+        : { goalName: name, planId: plan.id, planLabel: planLabel(plan) }
+  }
   isGoalFormOpen.value = false
 })
 
@@ -191,14 +212,24 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
     </section>
 
     <section v-for="goal in savingsStore.goals" :key="goal.id" class="card">
-      <button
-        type="button"
-        class="savings-remove"
-        :aria-label="`Fjern sparemålet ${goal.name}`"
-        @click="handleDeleteGoal(goal.id, goal.name)"
-      >
-        ✕
-      </button>
+      <div class="savings-cover-actions">
+        <button
+          type="button"
+          class="savings-cover-action"
+          :aria-label="`Rediger sparemålet ${goal.name}`"
+          @click="startEditingGoal(goal)"
+        >
+          ✎
+        </button>
+        <button
+          type="button"
+          class="savings-cover-action savings-cover-action-remove"
+          :aria-label="`Fjern sparemålet ${goal.name}`"
+          @click="handleDeleteGoal(goal.id, goal.name)"
+        >
+          ✕
+        </button>
+      </div>
 
       <div class="savings-cover" :style="{ background: SAVINGS_THEMES[goal.theme].gradient }">
         <span class="savings-cover-icon">{{ SAVINGS_THEMES[goal.theme].icon }}</span>
@@ -272,8 +303,11 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
       </form>
     </section>
 
-    <BaseModal v-model="isGoalFormOpen" title="Nytt sparemål">
-      <form class="form" @submit.prevent="runCreateGoal()">
+    <BaseModal
+      v-model="isGoalFormOpen"
+      :title="editingGoalId ? 'Rediger sparemål' : 'Nytt sparemål'"
+    >
+      <form class="form" @submit.prevent="runSaveGoal()">
         <label class="form-field">
           Navn
           <input v-model="goalName" type="text" placeholder="F.eks. Ferie til Italia" required />
@@ -294,20 +328,23 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
           Måldato
           <input v-model="goalTargetDate" type="date" required />
         </label>
-        <label v-if="plansStore.myPlans.length > 1" class="form-field">
-          Plan
-          <select v-model="selectedGoalPlanId">
-            <option v-for="plan in plansStore.myPlans" :key="plan.id" :value="plan.id">
-              {{ planLabel(plan) }}
-            </option>
-          </select>
-        </label>
-        <p v-if="selectedGoalPlan?.type === 'shared'" class="form-hint">
-          Alle i planen kan se dette sparemålet, spare til det og fjerne det.
-        </p>
-        <p v-if="createGoalError" class="form-error">{{ createGoalError }}</p>
-        <button type="submit" class="button-primary" :disabled="creatingGoal">
-          {{ creatingGoal ? 'Legger til …' : 'Legg til sparemål' }}
+        <template v-if="!editingGoalId">
+          <label v-if="plansStore.myPlans.length > 1" class="form-field">
+            Plan
+            <select v-model="selectedGoalPlanId">
+              <option v-for="plan in plansStore.myPlans" :key="plan.id" :value="plan.id">
+                {{ planLabel(plan) }}
+              </option>
+            </select>
+          </label>
+          <p v-if="selectedGoalPlan?.type === 'shared'" class="form-hint">
+            Alle i planen kan se dette sparemålet, spare til det og fjerne det.
+          </p>
+        </template>
+        <p v-if="saveGoalError" class="form-error">{{ saveGoalError }}</p>
+        <button type="submit" class="button-primary" :disabled="savingGoal">
+          <template v-if="savingGoal">{{ editingGoalId ? 'Lagrer …' : 'Legger til …' }}</template>
+          <template v-else>{{ editingGoalId ? 'Lagre endring' : 'Legg til sparemål' }}</template>
         </button>
       </form>
     </BaseModal>
@@ -371,13 +408,18 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
   margin-top: var(--space-3);
 }
 
-/* Sits on the cover art, so it gets its own frosted backing to stay
-   legible on every theme's gradient, light or dark. */
-.savings-remove {
+.savings-cover-actions {
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
   z-index: 1;
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Sits on the cover art, so it gets its own frosted backing to stay
+   legible on every theme's gradient, light or dark. */
+.savings-cover-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -393,7 +435,11 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
   line-height: 1;
 }
 
-.savings-remove:hover {
+.savings-cover-action:hover {
+  color: var(--color-primary);
+}
+
+.savings-cover-action-remove:hover {
   color: var(--color-danger);
 }
 </style>

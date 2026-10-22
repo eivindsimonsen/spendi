@@ -1,6 +1,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { savingsGoalsService, type CreateSavingsGoalInput } from '@/services/savings-goals.service'
+import {
+  savingsGoalsService,
+  type CreateSavingsGoalInput,
+  type UpdateSavingsGoalInput,
+} from '@/services/savings-goals.service'
 import {
   savingsContributionsService,
   type CreateContributionInput,
@@ -43,6 +47,12 @@ export const useSavingsStore = defineStore('savings', () => {
     return created
   }
 
+  async function updateGoal(id: string, changes: UpdateSavingsGoalInput) {
+    const updated = await savingsGoalsService.update(id, changes)
+    goals.value = goals.value.map((goal) => (goal.id === id ? updated : goal))
+    return updated
+  }
+
   async function deleteGoal(id: string) {
     await savingsGoalsService.delete(id)
     goals.value = goals.value.filter((goal) => goal.id !== id)
@@ -62,6 +72,7 @@ export const useSavingsStore = defineStore('savings', () => {
     load,
     contributionsTotal,
     createGoal,
+    updateGoal,
     deleteGoal,
     addContribution,
   }

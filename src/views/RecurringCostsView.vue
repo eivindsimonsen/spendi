@@ -8,6 +8,7 @@ import { useAddFromQuery } from '@/composables/useAddFromQuery'
 import RecurringCostForm from '@/components/budget/RecurringCostForm.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
+import SwipeAction from '@/components/common/SwipeAction.vue'
 import { formatCurrencyNOK } from '@/core/format'
 import { sumRecurringCosts } from '@/core/recurring-costs-total'
 import type { Database } from '@/types/database.types'
@@ -115,37 +116,34 @@ async function handleDeactivate(costId: string, costName: string) {
     </section>
 
     <section v-else class="card">
+      <p class="card-subtitle recurring-cost-swipe-hint">
+        💡 Dra en utgift mot venstre for å fjerne den.
+      </p>
       <div v-for="group in groups" :key="group.categoryId" class="recurring-cost-group">
         <p class="recurring-cost-category">
           <span aria-hidden="true">{{ group.icon }}</span> {{ group.label }}
         </p>
         <ul class="recurring-cost-list">
-          <li v-for="cost in group.items" :key="cost.id" class="budget-row recurring-cost-row">
-            <span class="recurring-cost-name">
-              {{ cost.name }}
-              <span v-if="cost.is_variable" class="recurring-cost-tag">varierer</span>
-            </span>
-            <span class="recurring-cost-amount">
-              {{ cost.amount != null ? formatCurrencyNOK(cost.amount) : '–' }}
-            </span>
-            <span class="recurring-cost-actions">
-              <button
-                type="button"
-                class="recurring-cost-action"
-                :aria-label="`Rediger ${cost.name}`"
-                @click="startEditing(cost)"
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                class="recurring-cost-action recurring-cost-action-remove"
-                :aria-label="`Fjern ${cost.name}`"
-                @click="handleDeactivate(cost.id, cost.name)"
-              >
-                ✕
-              </button>
-            </span>
+          <li v-for="cost in group.items" :key="cost.id">
+            <SwipeAction label="Fjern" danger @action="handleDeactivate(cost.id, cost.name)">
+              <div class="budget-row recurring-cost-row">
+                <span class="recurring-cost-name">
+                  {{ cost.name }}
+                  <span v-if="cost.is_variable" class="recurring-cost-tag">varierer</span>
+                </span>
+                <span class="recurring-cost-amount">
+                  {{ cost.amount != null ? formatCurrencyNOK(cost.amount) : '–' }}
+                </span>
+                <button
+                  type="button"
+                  class="recurring-cost-action"
+                  :aria-label="`Rediger ${cost.name}`"
+                  @click="startEditing(cost)"
+                >
+                  ✎
+                </button>
+              </div>
+            </SwipeAction>
           </li>
         </ul>
       </div>
@@ -169,6 +167,11 @@ async function handleDeactivate(costId: string, costName: string) {
 <style scoped>
 .recurring-cost-intro {
   margin: var(--space-1) 0 0;
+}
+
+.recurring-cost-swipe-hint {
+  font-size: 0.8rem;
+  margin: 0 0 var(--space-2);
 }
 
 .recurring-cost-group + .recurring-cost-group {
@@ -218,13 +221,9 @@ async function handleDeactivate(costId: string, costName: string) {
   white-space: nowrap;
 }
 
-.recurring-cost-actions {
-  display: flex;
-  flex-shrink: 0;
-}
-
 /* Icon-sized, but still a comfortable tap target on a phone. */
 .recurring-cost-action {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -240,10 +239,6 @@ async function handleDeactivate(costId: string, costName: string) {
 
 .recurring-cost-action:hover {
   color: var(--color-primary);
-}
-
-.recurring-cost-action-remove:hover {
-  color: var(--color-danger);
 }
 
 .recurring-cost-total {

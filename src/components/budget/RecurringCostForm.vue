@@ -62,13 +62,13 @@ const submitLabel = computed(() => {
       Kategori
       <CategoryPicker v-model="categoryId" />
     </label>
+    <label class="form-field">
+      {{ isVariable ? 'Anslag (brukes til historikk finnes)' : 'Beløp per måned (kr)' }}
+      <input v-model.number="amount" type="number" inputmode="numeric" min="0" step="1" />
+    </label>
     <label class="form-field-checkbox">
       <input v-model="isVariable" type="checkbox" />
       Denne utgiften varierer fra måned til måned (f.eks. strøm)
-    </label>
-    <label class="form-field">
-      {{ isVariable ? 'Anslag (brukes til historikk finnes)' : 'Beløp per måned (kr)' }}
-      <input v-model.number="amount" type="number" min="0" step="1" />
     </label>
     <p v-if="error" class="form-error">{{ error }}</p>
     <button type="submit" class="button-primary" :disabled="loading">

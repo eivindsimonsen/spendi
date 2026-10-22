@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-defineProps<{ label: string }>()
+// `danger` colors the revealed action red, for a swipe that removes
+// something rather than toggling it.
+defineProps<{ label: string; danger?: boolean }>()
 const emit = defineEmits<{ action: [] }>()
 
 // Distances in px, not percentages -- these are deliberately small/fixed
@@ -74,6 +76,7 @@ function handleActionClick() {
     <button
       type="button"
       class="swipe-action-reveal"
+      :class="{ 'swipe-action-reveal-danger': danger }"
       :style="{ width: `${-translateX}px` }"
       @click="handleActionClick"
     >
@@ -118,6 +121,10 @@ function handleActionClick() {
   background: var(--color-primary);
   color: var(--color-primary-contrast);
   overflow: hidden;
+}
+
+.swipe-action-reveal-danger {
+  background: var(--color-danger);
 }
 
 .swipe-action-reveal-label {

@@ -9,6 +9,10 @@ export interface CreateSavingsGoalInput {
   theme: SavingsGoalTheme
 }
 
+// The plan is fixed once created: moving a goal would drag its
+// contribution history (possibly a partner's) into another plan with it.
+export type UpdateSavingsGoalInput = Omit<CreateSavingsGoalInput, 'planId'>
+
 export const savingsGoalsService = {
   async listByPlan(planId: string) {
     const { data, error } = await supabase
@@ -30,6 +34,22 @@ export const savingsGoalsService = {
         target_date: input.targetDate,
         theme: input.theme,
       })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async update(id: string, changes: UpdateSavingsGoalInput) {
+    const { data, error } = await supabase
+      .from('savings_goals')
+      .update({
+        name: changes.name,
+        target_amount: changes.targetAmount,
+        target_date: changes.targetDate,
+        theme: changes.theme,
+      })
+      .eq('id', id)
       .select()
       .single()
     if (error) throw error
