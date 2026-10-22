@@ -26,6 +26,12 @@ export function formatShortDate(date: Date): string {
   return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })
 }
 
+// A plan's name with an icon for whether it's yours alone or shared,
+// e.g. "🤝 The liebs" -- wherever a plan is named outside the picker.
+export function formatPlanLabel(plan: { type: string; name: string }): string {
+  return `${plan.type === 'individual' ? '👤' : '🤝'} ${plan.name}`
+}
+
 // Full month name for a date, e.g. "juni" -- used where a period only
 // needs to be identified by which month it belongs to (a shared plan's
 // members can have different paydays, so a payday-to-payday date range

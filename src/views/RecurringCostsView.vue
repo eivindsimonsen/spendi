@@ -4,7 +4,6 @@ import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useCategoriesStore } from '@/stores/categories.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCategoryLabel } from '@/composables/useCategoryLabel'
-import { useAddFromQuery } from '@/composables/useAddFromQuery'
 import RecurringCostForm from '@/components/budget/RecurringCostForm.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
@@ -84,8 +83,6 @@ function startEditing(cost: RecurringCost) {
   editingCost.value = cost
   isFormOpen.value = true
 }
-
-useAddFromQuery(startAdding)
 
 async function handleDeactivate(costId: string, costName: string) {
   const confirmed = window.confirm(

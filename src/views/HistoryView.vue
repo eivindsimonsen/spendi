@@ -145,9 +145,7 @@ function monthLabel(month: string): string {
           <li v-for="tx in group.transactions" :key="tx.id" class="list-row">
             <div>
               <p class="history-item-category">{{ categoryLabel(tx.category_id) }}</p>
-              <p class="card-subtitle">
-                {{ tx.occurred_on }}<span v-if="tx.note"> · {{ tx.note }}</span>
-              </p>
+              <p class="card-subtitle">{{ tx.occurred_on }} · {{ tx.name }}</p>
             </div>
             <span class="history-item-amount">{{ formatCurrencyNOK(tx.amount) }}</span>
           </li>

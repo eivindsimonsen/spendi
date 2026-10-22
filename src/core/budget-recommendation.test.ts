@@ -111,6 +111,40 @@ describe('buildBudgetRecommendation', () => {
     expect(result.split.unforeseen.value).toBeCloseTo(40000 * 0.1)
   })
 
+  it('takes unforeseen expenses off the income before the discretionary split', () => {
+    const recurringCosts: RecurringCostInput[] = [
+      { id: 'rent', name: 'Bolig', categoryId: 'cat-housing', amount: 12000, isVariable: false },
+    ]
+
+    const result = buildBudgetRecommendation(
+      40000,
+      recurringCosts,
+      new Map(),
+      3,
+      referenceDate,
+      undefined,
+      undefined,
+      [
+        { name: 'Tannlege', amount: 2500 },
+        { name: 'Bompenger', amount: 500 },
+      ],
+    )
+
+    expect(result.totalCommitted.value).toBe(12000)
+    expect(result.totalUnforeseen.value).toBe(3000)
+    expect(result.totalUnforeseen.steps[0]?.formula).toBe('Tannlege + Bompenger')
+    expect(result.remaining.value).toBe(25000)
+    expect(result.split.fun.value).toBeCloseTo(25000 * 0.5)
+  })
+
+  it('reports zero unforeseen spending when none was logged', () => {
+    const result = buildBudgetRecommendation(40000, [], new Map(), 3, referenceDate)
+
+    expect(result.totalUnforeseen.value).toBe(0)
+    expect(result.totalUnforeseen.steps[0]?.formula).toBe('0')
+    expect(result.remaining.value).toBe(40000)
+  })
+
   it('clamps the discretionary split to zero when overspent', () => {
     const recurringCosts: RecurringCostInput[] = [
       { id: 'rent', name: 'Bolig', categoryId: 'cat-housing', amount: 50000, isVariable: false },

@@ -5,7 +5,7 @@ const plansStore = usePlansStore()
 
 async function handleDelete(id: string) {
   const confirmed = window.confirm(
-    'Er du sikker på at du vil slette denne planen? Dette fjerner permanent alle faste utgifter, transaksjoner, inntekt og sparemål knyttet til den.',
+    'Er du sikker på at du vil slette denne planen? Dette fjerner permanent inntekt og sparemål knyttet til den. Faste og uforutsette utgifter er dine og blir værende.',
   )
   if (!confirmed) return
 

@@ -57,11 +57,6 @@ const router = createRouter({
       component: () => import('@/views/CreatePlanView.vue'),
     },
     {
-      path: '/add-expense',
-      name: 'add-expense',
-      component: () => import('@/views/AddExpenseView.vue'),
-    },
-    {
       path: '/account',
       name: 'account',
       component: () => import('@/views/AccountView.vue'),

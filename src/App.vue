@@ -2,6 +2,7 @@
 import { useAuthStore } from '@/stores/auth.store'
 import AppTabBar from '@/components/layout/AppTabBar.vue'
 import UpdatePrompt from '@/components/common/UpdatePrompt.vue'
+import AppToast from '@/components/common/AppToast.vue'
 
 const auth = useAuthStore()
 </script>
@@ -13,6 +14,7 @@ const auth = useAuthStore()
       <router-view />
     </main>
     <AppTabBar v-if="auth.isAuthenticated" />
+    <AppToast />
   </div>
 </template>
 

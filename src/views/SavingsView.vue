@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useLoadOnActivePlan } from '@/composables/useLoadOnActivePlan'
 import { useSavingsStore } from '@/stores/savings.store'
 import { usePlansStore } from '@/stores/plans.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useProfileNames } from '@/composables/useProfileNames'
-import { useAddFromQuery } from '@/composables/useAddFromQuery'
 import { calculateRequiredMonthlySavings } from '@/core/savings-calculator'
-import { formatCurrencyNOK, todayLocalDate, formatMonthName } from '@/core/format'
+import { formatCurrencyNOK, todayLocalDate, formatMonthName, formatPlanLabel } from '@/core/format'
 import { SAVINGS_THEMES } from '@/core/savings-themes'
-import type { Database, SavingsGoalTheme } from '@/types/database.types'
+import type { Database } from '@/types/database.types'
 import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
+import PlanPicker from '@/components/budget/PlanPicker.vue'
+import SavingsGoalForm from '@/components/savings/SavingsGoalForm.vue'
 
-type Plan = Database['public']['Tables']['plans']['Row']
 type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
 
 const savingsStore = useSavingsStore()
@@ -22,19 +22,6 @@ const plansStore = usePlansStore()
 const authStore = useAuthStore()
 
 const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId))
-
-function planLabel(plan: Pick<Plan, 'type' | 'name'>): string {
-  return `${plan.type === 'individual' ? '👤' : '🤝'} ${plan.name}`
-}
-
-// Says outright who can see the goals on screen, since that follows from
-// which plan they're in rather than from anything on the goal itself.
-const currentPlanNote = computed(() => {
-  if (!currentPlan.value) return ''
-  const audience =
-    currentPlan.value.type === 'individual' ? 'bare du ser disse' : 'delt med alle i planen'
-  return `${planLabel(currentPlan.value)} · ${audience}`
-})
 
 const { nameFor } = useProfileNames(() => {
   const ids = new Set<string>()
@@ -48,50 +35,21 @@ function contributionsFor(goalId: string) {
   return savingsStore.contributionsByGoal.get(goalId) ?? []
 }
 
-// One sheet for both adding and editing: `editingGoalId` is null while
-// adding. It's kept apart from the open flag so the sheet's title and
-// fields don't flip back to "new" while it slides out.
-const editingGoalId = ref<string | null>(null)
+// One sheet for both adding and editing: `editingGoal` is null while
+// adding. It's kept apart from the open flag so the form stays in the
+// sheet while it slides out, instead of vanishing the moment it closes.
+const editingGoal = ref<SavingsGoal | null>(null)
 const isGoalFormOpen = ref(false)
-const goalName = ref('')
-const goalTargetAmount = ref<number | null>(null)
-const goalTargetDate = ref('')
-const goalTheme = ref<SavingsGoalTheme>('other')
-
-// null means "the active plan", so the default follows whichever plan is
-// active when the sheet opens -- even if plans are still loading then,
-// as when arriving from the tab bar's "+" sheet.
-const goalPlanId = ref<string | null>(null)
-const selectedGoalPlanId = computed({
-  get: () => goalPlanId.value ?? currentPlan.value?.id ?? '',
-  set: (id: string) => {
-    goalPlanId.value = id
-  },
-})
-const selectedGoalPlan = computed(
-  () => plansStore.myPlans.find((plan) => plan.id === selectedGoalPlanId.value) ?? null,
-)
 
 function openGoalForm() {
-  editingGoalId.value = null
-  goalPlanId.value = null
-  goalName.value = ''
-  goalTargetAmount.value = null
-  goalTargetDate.value = ''
-  goalTheme.value = 'other'
+  editingGoal.value = null
   isGoalFormOpen.value = true
 }
 
 function startEditingGoal(goal: SavingsGoal) {
-  editingGoalId.value = goal.id
-  goalName.value = goal.name
-  goalTargetAmount.value = goal.target_amount
-  goalTargetDate.value = goal.target_date
-  goalTheme.value = goal.theme
+  editingGoal.value = goal
   isGoalFormOpen.value = true
 }
-
-useAddFromQuery(openGoalForm)
 
 // Set after adding a goal to another plan than the one on screen: it
 // won't show up in this list, so without a word it'd seem to vanish.
@@ -104,34 +62,16 @@ watch(
   },
 )
 
-const {
-  loading: savingGoal,
-  error: saveGoalError,
-  run: runSaveGoal,
-} = useAsyncAction(async () => {
-  const name = goalName.value.trim()
-  if (!name || goalTargetAmount.value == null || !goalTargetDate.value) return
-
-  const details = {
-    name,
-    targetAmount: goalTargetAmount.value,
-    targetDate: goalTargetDate.value,
-    theme: goalTheme.value,
-  }
-
-  if (editingGoalId.value) {
-    await savingsStore.updateGoal(editingGoalId.value, details)
-  } else {
-    const plan = selectedGoalPlan.value
-    if (!plan) return
-    await savingsStore.createGoal({ planId: plan.id, ...details })
-    addedElsewhere.value =
-      plan.id === currentPlan.value?.id
-        ? null
-        : { goalName: name, planId: plan.id, planLabel: planLabel(plan) }
-  }
+function handleGoalSaved(goal: SavingsGoal) {
   isGoalFormOpen.value = false
-})
+  if (editingGoal.value) return
+
+  const plan = plansStore.myPlans.find((item) => item.id === goal.plan_id)
+  addedElsewhere.value =
+    !plan || plan.id === currentPlan.value?.id
+      ? null
+      : { goalName: goal.name, planId: plan.id, planLabel: formatPlanLabel(plan) }
+}
 
 function progressPercent(goalId: string, targetAmount: number): number {
   if (targetAmount <= 0) return 0
@@ -185,14 +125,13 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
 <template>
   <div class="container">
     <div class="page-header page-header-with-action">
-      <div>
-        <h1>Sparemål</h1>
-        <p v-if="currentPlanNote" class="card-subtitle savings-plan-note">{{ currentPlanNote }}</p>
-      </div>
+      <h1>Sparemål</h1>
       <button type="button" class="button-primary page-header-action" @click="openGoalForm">
         + Ny
       </button>
     </div>
+
+    <PlanPicker v-if="plansStore.myPlans.length" />
 
     <section v-if="addedElsewhere" class="card savings-added-elsewhere">
       <p class="card-subtitle">
@@ -303,50 +242,12 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
       </form>
     </section>
 
-    <BaseModal
-      v-model="isGoalFormOpen"
-      :title="editingGoalId ? 'Rediger sparemål' : 'Nytt sparemål'"
-    >
-      <form class="form" @submit.prevent="runSaveGoal()">
-        <label class="form-field">
-          Navn
-          <input v-model="goalName" type="text" placeholder="F.eks. Ferie til Italia" required />
-        </label>
-        <label class="form-field">
-          Tema
-          <select v-model="goalTheme">
-            <option v-for="(theme, key) in SAVINGS_THEMES" :key="key" :value="key">
-              {{ theme.icon }} {{ theme.label }}
-            </option>
-          </select>
-        </label>
-        <label class="form-field">
-          Målbeløp (kr)
-          <input v-model.number="goalTargetAmount" type="number" min="0" step="1" required />
-        </label>
-        <label class="form-field">
-          Måldato
-          <input v-model="goalTargetDate" type="date" required />
-        </label>
-        <template v-if="!editingGoalId">
-          <label v-if="plansStore.myPlans.length > 1" class="form-field">
-            Plan
-            <select v-model="selectedGoalPlanId">
-              <option v-for="plan in plansStore.myPlans" :key="plan.id" :value="plan.id">
-                {{ planLabel(plan) }}
-              </option>
-            </select>
-          </label>
-          <p v-if="selectedGoalPlan?.type === 'shared'" class="form-hint">
-            Alle i planen kan se dette sparemålet, spare til det og fjerne det.
-          </p>
-        </template>
-        <p v-if="saveGoalError" class="form-error">{{ saveGoalError }}</p>
-        <button type="submit" class="button-primary" :disabled="savingGoal">
-          <template v-if="savingGoal">{{ editingGoalId ? 'Lagrer …' : 'Legger til …' }}</template>
-          <template v-else>{{ editingGoalId ? 'Lagre endring' : 'Legg til sparemål' }}</template>
-        </button>
-      </form>
+    <BaseModal v-model="isGoalFormOpen" :title="editingGoal ? 'Rediger sparemål' : 'Nytt sparemål'">
+      <SavingsGoalForm
+        :key="editingGoal?.id ?? 'new'"
+        :goal="editingGoal"
+        @saved="handleGoalSaved"
+      />
     </BaseModal>
   </div>
 </template>

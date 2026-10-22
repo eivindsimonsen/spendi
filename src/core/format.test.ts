@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { formatCurrencyNOK, todayLocalDate, formatShortDate, formatMonthName } from './format'
+import {
+  formatCurrencyNOK,
+  todayLocalDate,
+  formatShortDate,
+  formatMonthName,
+  formatPlanLabel,
+} from './format'
+
+describe('formatPlanLabel', () => {
+  it('marks an individual plan with a person and a shared one with a handshake', () => {
+    expect(formatPlanLabel({ type: 'individual', name: 'Egen plan' })).toBe('👤 Egen plan')
+    expect(formatPlanLabel({ type: 'shared', name: 'The liebs' })).toBe('🤝 The liebs')
+  })
+})
 
 describe('formatCurrencyNOK', () => {
   it('formats a whole number of kroner with no decimals', () => {

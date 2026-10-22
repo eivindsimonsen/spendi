@@ -51,4 +51,9 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+
+  /* Height of the control beside a page title (the settings gear, "+ Ny").
+     Shared so every tab's header row is equally tall, and content below
+     it -- like the plan picker -- doesn't jump when switching tabs. */
+  --page-header-action-height: 40px;
 }

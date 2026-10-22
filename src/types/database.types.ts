@@ -533,10 +533,9 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
-          note: string | null
+          name: string
           occurred_on: string
           paid_by: string
-          plan_id: string
           recurring_cost_id: string | null
         }
         Insert: {
@@ -545,10 +544,9 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
-          note?: string | null
+          name: string
           occurred_on: string
           paid_by: string
-          plan_id: string
           recurring_cost_id?: string | null
         }
         Update: {
@@ -557,10 +555,9 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
-          note?: string | null
+          name?: string
           occurred_on?: string
           paid_by?: string
-          plan_id?: string
           recurring_cost_id?: string | null
         }
         Relationships: [
@@ -583,13 +580,6 @@ export type Database = {
             columns: ["paid_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "plans"
             referencedColumns: ["id"]
           },
           {
@@ -620,6 +610,20 @@ export type Database = {
           name: string
           owner_id: string
           updated_at: string
+        }[]
+      }
+      list_plan_transactions: {
+        Args: { p_plan_id: string }
+        Returns: {
+          amount: number
+          category_id: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          occurred_on: string
+          paid_by: string
+          recurring_cost_id: string | null
         }[]
       }
       propose_shared_plan: {

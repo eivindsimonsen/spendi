@@ -10,8 +10,9 @@ import type { Database } from '@/types/database.types'
 type Transaction = Database['public']['Tables']['transactions']['Row']
 
 export const useTransactionsStore = defineStore('transactions', () => {
-  // Feeds the variable-cost rolling average (Overview) and the Statistics
-  // page.
+  // The active plan's expenses (every member's) from the last few months:
+  // feeds the variable-cost rolling average and the period's unforeseen
+  // expenses in the budget.
   const recentTransactions = ref<Transaction[]>([])
 
   // Full, filterable list for the History view.

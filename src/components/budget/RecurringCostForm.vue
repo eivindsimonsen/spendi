@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import CategoryPicker from '@/components/common/CategoryPicker.vue'
 import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useAuthStore } from '@/stores/auth.store'
+import { useToastStore } from '@/stores/toast.store'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import type { Database } from '@/types/database.types'
 
@@ -16,6 +17,7 @@ const emit = defineEmits<{ saved: [] }>()
 
 const recurringCostsStore = useRecurringCostsStore()
 const authStore = useAuthStore()
+const toastStore = useToastStore()
 
 const name = ref(props.cost?.name ?? '')
 const categoryId = ref(props.cost?.category_id ?? '')
@@ -38,6 +40,7 @@ const { loading, error, run } = useAsyncAction(async () => {
     await recurringCostsStore.update(props.cost.id, fields)
   } else {
     await recurringCostsStore.create({ ownerId: authStore.user.id, ...fields })
+    toastStore.show(`«${fields.name}» er lagt til i faste utgifter.`)
     name.value = ''
     categoryId.value = ''
     amount.value = null

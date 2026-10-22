@@ -15,6 +15,11 @@ export interface RecurringCostInput {
   isVariable: boolean
 }
 
+export interface UnforeseenExpenseInput {
+  name: string
+  amount: number
+}
+
 export interface BudgetLineItem {
   recurringCostId: string
   name: string
@@ -30,6 +35,7 @@ export interface BudgetRecommendation {
   income: CalculationResult<number>
   lineItems: BudgetLineItem[]
   totalCommitted: CalculationResult<number>
+  totalUnforeseen: CalculationResult<number>
   remaining: CalculationResult<number>
   split: DiscretionarySplit
 }
@@ -87,6 +93,10 @@ function estimateVariableCostWithFallback(
 // `loggedIncomeAmount` is the sum of income_payments logged for the
 // current pay period (see core/pay-schedule.ts) -- there's no smoothed
 // estimate anymore, since a real logged number is always used instead.
+//
+// `unforeseenExpenses` are the period's one-off expenses, already picked
+// out by selectUnforeseenExpenses. They come off the income before the
+// discretionary split, so money already spent isn't handed out again.
 export function buildBudgetRecommendation(
   loggedIncomeAmount: number,
   recurringCosts: RecurringCostInput[],
@@ -95,6 +105,7 @@ export function buildBudgetRecommendation(
   referenceDate: Date,
   budgetModelId: BudgetModelId = DEFAULT_BUDGET_MODEL,
   skippedRecurringCostIds: ReadonlySet<string> = new Set(),
+  unforeseenExpenses: readonly UnforeseenExpenseInput[] = [],
 ): BudgetRecommendation {
   const income = loggedIncomeResult(loggedIncomeAmount)
 
@@ -139,19 +150,41 @@ export function buildBudgetRecommendation(
     ],
   }
 
-  const remainingValue = income.value - totalCommittedValue
+  const totalUnforeseenValue = unforeseenExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const unforeseenCount = unforeseenExpenses.length
+
+  const totalUnforeseen: CalculationResult<number> = {
+    value: totalUnforeseenValue,
+    model: 'sum-of-unforeseen-expenses-v1',
+    summary: `Sum av ${unforeseenCount} uforutsett${unforeseenCount === 1 ? '' : 'e'} utgift${unforeseenCount === 1 ? '' : 'er'} logget denne perioden.`,
+    steps: [
+      {
+        label: 'Sum uforutsette utgifter',
+        formula: unforeseenExpenses.map((expense) => expense.name).join(' + ') || '0',
+        inputs: unforeseenExpenses.map((expense) => ({
+          label: expense.name,
+          value: expense.amount,
+          unit: 'kr',
+        })),
+        result: totalUnforeseenValue,
+      },
+    ],
+  }
+
+  const remainingValue = income.value - totalCommittedValue - totalUnforeseenValue
 
   const remaining: CalculationResult<number> = {
     value: remainingValue,
-    model: 'income-minus-committed-costs-v1',
-    summary: 'Det som er igjen av inntekten etter faste utgifter.',
+    model: 'income-minus-committed-and-unforeseen-v1',
+    summary: 'Det som er igjen av inntekten etter faste og uforutsette utgifter.',
     steps: [
       {
         label: 'Fritt til rådighet',
-        formula: 'loggført lønn − sum faste utgifter',
+        formula: 'loggført lønn − sum faste utgifter − sum uforutsette utgifter',
         inputs: [
           { label: 'Loggført lønn', value: income.value, unit: 'kr' },
           { label: 'Sum faste utgifter', value: totalCommittedValue, unit: 'kr' },
+          { label: 'Sum uforutsette utgifter', value: totalUnforeseenValue, unit: 'kr' },
         ],
         result: remainingValue,
       },
@@ -160,5 +193,5 @@ export function buildBudgetRecommendation(
 
   const split = splitDiscretionaryIncome(remainingValue, budgetModelId)
 
-  return { income, lineItems, totalCommitted, remaining, split }
+  return { income, lineItems, totalCommitted, totalUnforeseen, remaining, split }
 }

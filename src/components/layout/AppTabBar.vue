@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseModal from '@/components/common/BaseModal.vue'
+import RecurringCostForm from '@/components/budget/RecurringCostForm.vue'
+import AddExpenseForm from '@/components/expense/AddExpenseForm.vue'
+import SavingsGoalForm from '@/components/savings/SavingsGoalForm.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,10 +21,38 @@ const tabsAfterAdd = [
   { to: '/account', icon: '👤', label: 'Konto' },
 ]
 
+// Adding something happens right in this sheet, over whatever page you're
+// on: picking a choice swaps the menu for that form instead of leaving
+// the page. Only starting a new plan still navigates, since those are
+// whole pages of their own.
+type AddForm = 'recurring-cost' | 'expense' | 'savings-goal'
+
+const ADD_FORM_TITLES: Record<AddForm, string> = {
+  'recurring-cost': 'Ny fast utgift',
+  expense: 'Uforutsett utgift',
+  'savings-goal': 'Nytt sparemål',
+}
+
 const isAddSheetOpen = ref(false)
+// Kept apart from the open flag, so the form stays in the sheet while it
+// slides out rather than flicking back to the menu first.
+const activeForm = ref<AddForm | null>(null)
+
+const sheetTitle = computed(() =>
+  activeForm.value ? ADD_FORM_TITLES[activeForm.value] : 'Hva vil du legge til?',
+)
+
+function openAddSheet() {
+  activeForm.value = null
+  isAddSheetOpen.value = true
+}
+
+function closeAddSheet() {
+  isAddSheetOpen.value = false
+}
 
 function goTo(path: string) {
-  isAddSheetOpen.value = false
+  closeAddSheet()
   router.push(path)
 }
 </script>
@@ -40,7 +71,7 @@ function goTo(path: string) {
       <span class="tab-bar-label">{{ tab.label }}</span>
     </router-link>
 
-    <button type="button" class="tab-bar-fab" aria-label="Legg til" @click="isAddSheetOpen = true">
+    <button type="button" class="tab-bar-fab" aria-label="Legg til" @click="openAddSheet">
       <span class="tab-bar-fab-icon" aria-hidden="true"></span>
     </button>
 
@@ -57,23 +88,27 @@ function goTo(path: string) {
     </router-link>
   </nav>
 
-  <BaseModal v-model="isAddSheetOpen" title="Hva vil du legge til?">
-    <div class="add-action-choices">
-      <button type="button" class="add-action-choice" @click="goTo('/recurring-costs?add=1')">
+  <BaseModal v-model="isAddSheetOpen" :title="sheetTitle">
+    <RecurringCostForm v-if="activeForm === 'recurring-cost'" @saved="closeAddSheet" />
+    <AddExpenseForm v-else-if="activeForm === 'expense'" @created="closeAddSheet" />
+    <SavingsGoalForm v-else-if="activeForm === 'savings-goal'" @saved="closeAddSheet" />
+
+    <div v-else class="add-action-choices">
+      <button type="button" class="add-action-choice" @click="activeForm = 'recurring-cost'">
         <span class="add-action-icon" aria-hidden="true">🔁</span>
         <span class="add-action-text">
           <strong>Fast utgift</strong>
           <small>Gjentar seg hver lønningsperiode (husleie, abonnement …)</small>
         </span>
       </button>
-      <button type="button" class="add-action-choice" @click="goTo('/add-expense')">
+      <button type="button" class="add-action-choice" @click="activeForm = 'expense'">
         <span class="add-action-icon" aria-hidden="true">📌</span>
         <span class="add-action-text">
           <strong>Uforutsett utgift</strong>
           <small>Gjelder kun denne lønningsperioden</small>
         </span>
       </button>
-      <button type="button" class="add-action-choice" @click="goTo('/savings?add=1')">
+      <button type="button" class="add-action-choice" @click="activeForm = 'savings-goal'">
         <span class="add-action-icon" aria-hidden="true">🎯</span>
         <span class="add-action-text">
           <strong>Opprett spareplan</strong>

@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useCurrentPlan } from '@/composables/useCurrentPlan'
 import { usePlansStore } from '@/stores/plans.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
-import { useCategoryLabel } from '@/composables/useCategoryLabel'
+import { useAuthStore } from '@/stores/auth.store'
 import { useBudgetRecommendation } from '@/composables/useBudgetRecommendation'
 import { usePeriodHistory } from '@/composables/usePeriodHistory'
 import { useAsyncAction } from '@/composables/useAsyncAction'
@@ -23,13 +23,13 @@ function hasCalculation(estimateModel: string): boolean {
 const { currentPlan } = useCurrentPlan()
 const plansStore = usePlansStore()
 const transactionsStore = useTransactionsStore()
-const { categoryLabel } = useCategoryLabel()
+const authStore = useAuthStore()
 const { periodSummaries } = usePeriodHistory(currentPlan)
 
 const {
   budgetRecommendation,
   sortedLineItems,
-  discretionaryTransactionsThisPeriod,
+  unforeseenExpensesThisPeriod,
   memberName,
   recurringCostOwnerName,
   categoryIcon,
@@ -182,8 +182,48 @@ async function handleDeleteTransaction(id: string) {
           <span>Sum faste utgifter</span>
           <ExplainableValue :result="budgetRecommendation.totalCommitted" />
         </div>
+
+        <template v-if="unforeseenExpensesThisPeriod.length">
+          <p class="section-eyebrow budget-section-heading budget-section-heading-divided">
+            Uforutsette utgifter
+          </p>
+          <div class="budget-line-items">
+            <template v-for="expense in unforeseenExpensesThisPeriod" :key="expense.id">
+              <!-- Only whoever paid can remove an expense, so a partner's
+                   is listed without the swipe. -->
+              <SwipeAction
+                v-if="expense.paidBy === authStore.user?.id"
+                label="Fjern"
+                danger
+                @action="handleDeleteTransaction(expense.id)"
+              >
+                <div class="budget-row budget-row-unforeseen">
+                  <span>
+                    {{ categoryIcon(expense.categoryId) }} {{ expense.name }}
+                    <span v-if="currentPlan?.type === 'shared'" class="budget-row-owner">
+                      {{ memberName(expense.paidBy) }}
+                    </span>
+                  </span>
+                  <span>{{ formatCurrencyNOK(expense.amount) }}</span>
+                </div>
+              </SwipeAction>
+              <div v-else class="budget-row budget-row-unforeseen">
+                <span>
+                  {{ categoryIcon(expense.categoryId) }} {{ expense.name }}
+                  <span class="budget-row-owner">{{ memberName(expense.paidBy) }}</span>
+                </span>
+                <span>{{ formatCurrencyNOK(expense.amount) }}</span>
+              </div>
+            </template>
+          </div>
+          <div class="budget-row budget-row-total">
+            <span>Sum uforutsette utgifter</span>
+            <ExplainableValue :result="budgetRecommendation.totalUnforeseen" />
+          </div>
+        </template>
+
         <div class="budget-row budget-row-remaining">
-          <span>Igjen etter faste utgifter</span>
+          <span>Igjen etter utgifter</span>
           <ExplainableValue :result="budgetRecommendation.remaining" />
         </div>
 
@@ -201,33 +241,6 @@ async function handleDeleteTransaction(id: string) {
             <ExplainableValue :result="budgetRecommendation.split.unforeseen" />
           </div>
         </div>
-
-        <template v-if="discretionaryTransactionsThisPeriod.length">
-          <p class="section-eyebrow budget-section-heading budget-section-heading-divided">
-            Uforutsett utgift
-          </p>
-          <div class="budget-line-items">
-            <div v-for="tx in discretionaryTransactionsThisPeriod" :key="tx.id" class="budget-row">
-              <span>
-                {{ categoryLabel(tx.category_id) }}
-                <span v-if="currentPlan?.type === 'shared'" class="budget-row-owner">
-                  {{ memberName(tx.paid_by) }}
-                </span>
-              </span>
-              <span class="budget-row-amount-actions">
-                <span>{{ formatCurrencyNOK(tx.amount) }}</span>
-                <button
-                  type="button"
-                  class="icon-button-remove"
-                  aria-label="Fjern utgift"
-                  @click="handleDeleteTransaction(tx.id)"
-                >
-                  ✕
-                </button>
-              </span>
-            </div>
-          </div>
-        </template>
       </section>
 
       <section v-if="periodSummaries.length" class="card">
@@ -337,10 +350,10 @@ async function handleDeleteTransaction(id: string) {
   margin: 0 0 var(--space-1);
 }
 
-.budget-row-amount-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+/* Red sets money already spent apart from the planned costs above it.
+   The payer's name underneath keeps its own muted color. */
+.budget-row-unforeseen {
+  color: var(--color-danger);
 }
 
 .budget-row-skipped {

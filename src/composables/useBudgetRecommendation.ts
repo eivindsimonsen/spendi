@@ -11,7 +11,7 @@ import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
 import { getDaysUntilPayday } from '@/core/pay-schedule'
 import { buildBudgetRecommendation, type RecurringCostInput } from '@/core/budget-recommendation'
-import { isWithinRange } from '@/core/date-range'
+import { selectUnforeseenExpenses } from '@/core/unforeseen-expenses'
 import type { DatedAmount } from '@/core/variable-cost-estimator'
 import type { Database } from '@/types/database.types'
 
@@ -130,6 +130,32 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     return map
   })
 
+  const variableCostCategoryIds = computed(
+    () =>
+      new Set(
+        recurringCostsStore.planCosts
+          .filter((cost) => cost.is_variable)
+          .map((cost) => cost.category_id),
+      ),
+  )
+
+  const unforeseenExpensesThisPeriod = computed(() => {
+    const period = currentPeriod.value
+    if (!period) return []
+    return selectUnforeseenExpenses(
+      transactionsStore.recentTransactions.map((tx) => ({
+        id: tx.id,
+        name: tx.name,
+        categoryId: tx.category_id,
+        amount: tx.amount,
+        occurredOn: tx.occurred_on,
+        paidBy: tx.paid_by,
+      })),
+      period,
+      variableCostCategoryIds.value,
+    )
+  })
+
   const budgetRecommendation = computed(() => {
     if (!incomePaymentsStore.loaded || periodIncomeTotal.value === 0) return null
 
@@ -153,6 +179,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
       new Date(),
       currentPlan.value?.budget_model,
       skippedIds,
+      unforeseenExpensesThisPeriod.value,
     )
   })
 
@@ -164,25 +191,6 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     }
     return recurringCostsStore.skipForPeriod(recurringCostId, format(period.start, 'yyyy-MM-dd'))
   }
-
-  // Categories already covered by a recurring cost are excluded here --
-  // their amount is already accounted for in "Faste utgifter", so this
-  // is genuinely unplanned/discretionary spending, not a double-count.
-  const recurringCostCategoryIds = computed(
-    () => new Set(recurringCostsStore.planCosts.map((cost) => cost.category_id)),
-  )
-
-  const discretionaryTransactionsThisPeriod = computed(() => {
-    const period = currentPeriod.value
-    if (!period) return []
-    return transactionsStore.recentTransactions
-      .filter(
-        (tx) =>
-          isWithinRange(new Date(tx.occurred_on), period.start, period.end) &&
-          !recurringCostCategoryIds.value.has(tx.category_id),
-      )
-      .sort((a, b) => b.amount - a.amount)
-  })
 
   // Biggest costs first -- callers decide whether/how to collapse a long
   // list behind a "show more" toggle.
@@ -202,7 +210,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     periodIncomeTotal,
     budgetRecommendation,
     sortedLineItems,
-    discretionaryTransactionsThisPeriod,
+    unforeseenExpensesThisPeriod,
     memberName,
     recurringCostOwnerName,
     categoryIcon,

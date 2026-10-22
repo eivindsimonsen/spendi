@@ -161,8 +161,12 @@ const dailyAllowanceFeedback = computed(() => {
             <span>Sum faste utgifter</span>
             <ExplainableValue :result="budgetRecommendation.totalCommitted" />
           </div>
+          <div v-if="budgetRecommendation.totalUnforeseen.value > 0" class="budget-row">
+            <span>Sum uforutsette utgifter</span>
+            <ExplainableValue :result="budgetRecommendation.totalUnforeseen" />
+          </div>
           <div class="budget-row budget-row-remaining">
-            <span>Igjen etter faste utgifter</span>
+            <span>Igjen etter utgifter</span>
             <ExplainableValue :result="budgetRecommendation.remaining" />
           </div>
 
@@ -262,8 +266,8 @@ const dailyAllowanceFeedback = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: var(--page-header-action-height);
+  height: var(--page-header-action-height);
   border-radius: 50%;
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);

@@ -52,24 +52,28 @@ export const useRecurringCostsStore = defineStore('recurringCosts', () => {
     skippedThisPeriod.value = skippedThisPeriod.value.filter((item) => item.id !== skip.id)
   }
 
-  // Only `myCosts` is patched here: adding, editing or removing a cost
-  // happens on Faste utgifter, and every view that reads `planCosts`
-  // refetches it when it mounts, so there's no second copy to keep in sync.
+  // Both lists are patched: a cost of yours belongs to every plan you're
+  // in, the active one included, and it can be added from the tab bar's
+  // "+" sheet on any page -- the budget on screen has to pick it up
+  // without waiting for a view to remount and refetch `planCosts`.
   async function create(input: CreateRecurringCostInput) {
     const created = await recurringCostsService.create(input)
     myCosts.value = [...myCosts.value, created]
+    planCosts.value = [...planCosts.value, created]
     return created
   }
 
   async function update(id: string, changes: UpdateRecurringCostInput) {
     const updated = await recurringCostsService.update(id, changes)
     myCosts.value = myCosts.value.map((cost) => (cost.id === id ? updated : cost))
+    planCosts.value = planCosts.value.map((cost) => (cost.id === id ? updated : cost))
     return updated
   }
 
   async function deactivate(id: string) {
     await recurringCostsService.deactivate(id)
     myCosts.value = myCosts.value.filter((cost) => cost.id !== id)
+    planCosts.value = planCosts.value.filter((cost) => cost.id !== id)
   }
 
   return {
