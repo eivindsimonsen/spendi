@@ -191,7 +191,7 @@ const dailyAllowanceFeedback = computed(() => {
               <ExplainableValue :result="budgetRecommendation.split.savings" />
             </div>
             <div class="budget-row">
-              <span>Uforutsette ting</span>
+              <span>Buffer</span>
               <ExplainableValue :result="budgetRecommendation.split.unforeseen" />
             </div>
           </div>
