@@ -70,14 +70,23 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     currentPeriod,
     async (period) => {
       if (!period || !currentPlan.value) return
-      await Promise.all([
-        incomePaymentsStore.loadForPeriod(
-          currentPlan.value.id,
-          format(period.start, 'yyyy-MM-dd'),
-          format(period.end, 'yyyy-MM-dd'),
-        ),
-        recurringCostsStore.loadSkipsForPeriod(format(period.start, 'yyyy-MM-dd')),
-      ])
+      await incomePaymentsStore.loadForPeriod(
+        currentPlan.value.id,
+        format(period.start, 'yyyy-MM-dd'),
+        format(period.end, 'yyyy-MM-dd'),
+      )
+    },
+    { immediate: true },
+  )
+
+  // Skips are looked up by planCosts' ids, which load in parallel with the
+  // period -- if the period lands first, skips would be fetched for no
+  // costs at all, so a planCosts change has to refetch them too.
+  watch(
+    [currentPeriod, () => recurringCostsStore.planCosts],
+    async ([period]) => {
+      if (!period) return
+      await recurringCostsStore.loadSkipsForPeriod(format(period.start, 'yyyy-MM-dd'))
     },
     { immediate: true },
   )
