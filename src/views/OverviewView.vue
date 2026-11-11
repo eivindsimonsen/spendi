@@ -22,7 +22,7 @@ const { currentPlan } = useLoadOnActivePlan((planId) => savingsStore.load(planId
 
 const {
   currentPeriod,
-  daysUntilMyPayday,
+  nextPayday,
   memberPaydayCountdowns,
   periodIncomeTotal,
   budgetRecommendation,
@@ -42,8 +42,9 @@ function goalPercent(goal: { id: string; target_amount: number }): number {
 const dailyAmountInput = ref<number | null>(null)
 
 const dailyAllowance = computed(() => {
-  if (dailyAmountInput.value == null || daysUntilMyPayday.value == null) return null
-  return calculateDailyAllowance(dailyAmountInput.value, daysUntilMyPayday.value)
+  if (dailyAmountInput.value == null || !nextPayday.value) return null
+  const { daysUntil, date, name } = nextPayday.value
+  return calculateDailyAllowance(dailyAmountInput.value, daysUntil, { date, name })
 })
 
 // The recommended "Fri bruk" rate spread evenly across the whole period,

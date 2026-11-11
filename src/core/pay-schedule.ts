@@ -1,4 +1,11 @@
-import { addMonths, subMonths, subDays, getDaysInMonth } from 'date-fns'
+import {
+  addMonths,
+  subMonths,
+  subDays,
+  getDaysInMonth,
+  startOfDay,
+  differenceInCalendarDays,
+} from 'date-fns'
 
 export interface PayPeriod {
   start: Date
@@ -49,36 +56,59 @@ export function getPayPeriod(
   return { start, end }
 }
 
-// Days until the *next* payday. If today is itself a payday, this counts
-// down to the following one (today already starts its own period) rather
-// than showing 0 -- by the time you'd check this, today's pay is what
-// you're expected to log, not what you're still waiting for.
+// When pay actually lands for a given nominal payday: a weekend payday is
+// paid the preceding Friday (the common Norwegian payroll convention) --
+// Saturday -> Friday (1 day early), Sunday -> Friday (2 days early).
+// Weekdays are unchanged.
+function actualPayDate(nominalPayday: Date): Date {
+  const weekday = nominalPayday.getDay() // 0 = Sunday, 6 = Saturday
+  if (weekday === 6) return subDays(nominalPayday, 1)
+  if (weekday === 0) return subDays(nominalPayday, 2)
+  return nominalPayday
+}
+
+// The date the next pay actually arrives, weekend-adjusted (see
+// actualPayDate). Unlike the pay period's `end`, this doesn't wait for an
+// early-period override to be confirmed: a Sunday-15th payday counts down
+// to Friday the 13th from the start. Once that Friday has arrived, this
+// cycle's pay is in, so it moves on to the next one, even though the
+// period boundary itself is still the nominal (weekend) payday.
+export function getNextPayDate(
+  payday: number,
+  referenceDate: Date,
+  overrideStart?: Date | null,
+): Date {
+  const { end } = getPayPeriod(payday, referenceDate, overrideStart)
+  const upcoming = actualPayDate(end)
+  if (upcoming > startOfDay(referenceDate)) return upcoming
+  return actualPayDate(paydayInMonth(payday, addMonths(end, 1)))
+}
+
+// Days left to stretch money across before the next pay actually arrives
+// (weekend-adjusted, see getNextPayDate): today counts, the pay date
+// itself doesn't. If today is itself a pay date, this counts down to the
+// following one rather than showing 0. By the time you'd check this,
+// today's pay is what you're expected to log, not what you're still
+// waiting for.
 export function getDaysUntilPayday(
   payday: number,
   referenceDate: Date,
   overrideStart?: Date | null,
 ): number {
-  const { end } = getPayPeriod(payday, referenceDate, overrideStart)
-  const msPerDay = 1000 * 60 * 60 * 24
-  return Math.ceil((end.getTime() - referenceDate.getTime()) / msPerDay)
+  return differenceInCalendarDays(
+    getNextPayDate(payday, referenceDate, overrideStart),
+    referenceDate,
+  )
 }
 
 // Detects "your payday falls on a weekend this month" and suggests the
-// preceding Friday as the likely actual pay date (the common Norwegian
-// payroll convention) -- Saturday payday -> Friday (1 day early), Sunday
-// payday -> Friday (2 days early). Only suggested once that Friday has
-// actually arrived and before the real (weekend) payday itself, so it
-// doesn't fire the rest of the month.
+// preceding Friday (see actualPayDate) as the start of the new period.
+// Only suggested once that Friday has actually arrived and before the
+// real (weekend) payday itself, so it doesn't fire the rest of the month.
 export function suggestEarlyPeriodStart(payday: number, referenceDate: Date): Date | null {
   const thisMonthPayday = paydayInMonth(payday, referenceDate)
-  const weekday = thisMonthPayday.getDay() // 0 = Sunday, 6 = Saturday
-
-  let shiftDays: number
-  if (weekday === 6) shiftDays = 1
-  else if (weekday === 0) shiftDays = 2
-  else return null
-
-  const earlyDate = subDays(thisMonthPayday, shiftDays)
+  const earlyDate = actualPayDate(thisMonthPayday)
+  if (earlyDate.getTime() === thisMonthPayday.getTime()) return null
   if (referenceDate < earlyDate || referenceDate >= thisMonthPayday) return null
 
   return earlyDate

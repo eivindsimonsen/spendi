@@ -1,9 +1,18 @@
-import type { CalculationResult } from './types/calculation-result'
+import type { CalculationInput, CalculationResult } from './types/calculation-result'
+import { formatShortDate } from './format'
 
 // If today IS payday (or something upstream is off), there's no "days
 // left to stretch this across" to divide by -- treat the whole amount
 // as available right now rather than dividing by zero.
 const MIN_DAYS = 1
+
+export interface NextPay {
+  // When the pay actually arrives (weekend-adjusted, see getNextPayDate).
+  date: Date
+  // Whose payday it is -- only worth naming on a shared plan, where the
+  // soonest member's payday is the one counted down to.
+  name?: string
+}
 
 // A quick, ad-hoc calculator: given an amount the user currently has,
 // how much is that per day until the next payday? Not tied to any
@@ -11,23 +20,34 @@ const MIN_DAYS = 1
 export function calculateDailyAllowance(
   currentAmount: number,
   daysUntilPayday: number,
+  nextPay?: NextPay,
 ): CalculationResult<number> {
   const safeAmount = Math.max(currentAmount, 0)
   const days = Math.max(Math.round(daysUntilPayday), MIN_DAYS)
   const value = safeAmount / days
 
+  const nextPayLabel = nextPay
+    ? `${formatShortDate(nextPay.date)}${nextPay.name ? ` (${nextPay.name})` : ''}`
+    : null
+
+  const inputs: CalculationInput[] = [{ label: 'Beløp', value: safeAmount, unit: 'kr' }]
+  if (nextPayLabel) inputs.push({ label: 'Neste lønn', value: nextPayLabel })
+  inputs.push({ label: 'Dager til lønn', value: days })
+
   return {
     value,
-    model: 'daily-allowance-v1',
-    summary: `${safeAmount} kr fordelt på ${days} dag${days === 1 ? '' : 'er'} til lønn.`,
+    model: 'daily-allowance-v2',
+    summary:
+      `${safeAmount} kr fordelt på ${days} dag${days === 1 ? '' : 'er'} til lønn` +
+      (nextPayLabel ? ` ${nextPayLabel}` : '') +
+      '. I dag teller med, lønningsdagen gjør det ikke. Faller lønningsdagen på en helg, ' +
+      'regner vi med lønn fredagen før.' +
+      (nextPay?.name ? ' I en felles plan teller vi ned til den som får lønn først.' : ''),
     steps: [
       {
         label: 'Til rådighet per dag',
         formula: 'beløp ÷ dager til lønn',
-        inputs: [
-          { label: 'Beløp', value: safeAmount, unit: 'kr' },
-          { label: 'Dager til lønn', value: days },
-        ],
+        inputs,
         result: value,
       },
     ],

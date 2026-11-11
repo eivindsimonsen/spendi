@@ -21,6 +21,19 @@ describe('calculateDailyAllowance', () => {
     const result = calculateDailyAllowance(-200, 5)
     expect(result.value).toBe(0)
   })
+
+  it('names the pay date and whose payday it is in the explanation', () => {
+    const result = calculateDailyAllowance(100, 1, { date: new Date(2026, 10, 12), name: 'Kari' })
+    const inputs = result.steps[0]!.inputs
+    const nextPay = inputs.find((input) => input.label === 'Neste lønn')
+    expect(nextPay?.value).toContain('Kari')
+    expect(result.summary).toContain('Kari')
+  })
+
+  it('leaves out the pay date when none is given', () => {
+    const result = calculateDailyAllowance(100, 2)
+    expect(result.steps[0]!.inputs.some((input) => input.label === 'Neste lønn')).toBe(false)
+  })
 })
 
 describe('classifyDailyAllowance', () => {

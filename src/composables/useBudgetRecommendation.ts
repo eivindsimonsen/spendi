@@ -9,7 +9,7 @@ import { useIncomePaymentsStore } from '@/stores/income-payments.store'
 import { useCategoriesStore } from '@/stores/categories.store'
 import { useRecurringCostsStore } from '@/stores/recurring-costs.store'
 import { useTransactionsStore } from '@/stores/transactions.store'
-import { getDaysUntilPayday } from '@/core/pay-schedule'
+import { getDaysUntilPayday, getNextPayDate } from '@/core/pay-schedule'
 import { buildBudgetRecommendation, type RecurringCostInput } from '@/core/budget-recommendation'
 import { selectUnforeseenExpenses } from '@/core/unforeseen-expenses'
 import type { DatedAmount } from '@/core/variable-cost-estimator'
@@ -48,23 +48,6 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
   }, providedCurrentPlan)
 
   const currentPeriod = computed(() => incomeStore.currentPeriod)
-
-  // Distinct from `currentPeriod` above: that one anchors to the
-  // earliest payday across the whole plan (so a shared period's
-  // boundary lines up for both partners), which would silently use a
-  // partner's payday here on a shared plan. A personal "how much do I
-  // have left per day" figure has to count down to *your own* next
-  // payday instead -- correctly reflecting an active early-period
-  // override too (e.g. jumps from "1 day" to "~31" once confirmed).
-  const daysUntilMyPayday = computed(() => {
-    if (incomeStore.paySchedule?.payday == null) return null
-    const override = incomeStore.paySchedule.period_override_start
-    return getDaysUntilPayday(
-      incomeStore.paySchedule.payday,
-      new Date(),
-      override ? new Date(override) : null,
-    )
-  })
 
   watch(
     currentPeriod,
@@ -108,22 +91,41 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
     return cost ? memberName(cost.owner_id) : 'Ukjent'
   }
 
-  // Every plan member's own countdown to their next payday -- unlike
-  // `currentPeriod`'s single shared boundary, this shows each person's
-  // actual payday, soonest first.
-  const memberPaydayCountdowns = computed(() =>
-    incomeStore.planPaydays
-      .map((profile) => ({
-        profileId: profile.profile_id,
-        name: memberName(profile.profile_id),
-        daysUntil: getDaysUntilPayday(
-          profile.payday,
-          new Date(),
-          profile.period_override_start ? new Date(profile.period_override_start) : null,
-        ),
-      }))
-      .sort((a, b) => a.daysUntil - b.daysUntil),
-  )
+  // Every plan member's own countdown to when their pay actually arrives
+  // (weekend-adjusted, see getNextPayDate). Unlike `currentPeriod`'s
+  // single shared boundary, this shows each person's own payday, soonest
+  // first.
+  const memberPaydayCountdowns = computed(() => {
+    const today = new Date()
+    return incomeStore.planPaydays
+      .map((profile) => {
+        const override = profile.period_override_start
+          ? new Date(profile.period_override_start)
+          : null
+        return {
+          profileId: profile.profile_id,
+          name: memberName(profile.profile_id),
+          nextPayDate: getNextPayDate(profile.payday, today, override),
+          daysUntil: getDaysUntilPayday(profile.payday, today, override),
+        }
+      })
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+  })
+
+  // What "Hva har jeg igjen per dag?" counts down to: the soonest pay
+  // across the plan. On an individual plan that's your own; on a shared
+  // plan it's whoever gets paid first, since the household's money is
+  // topped up then. `name` is only set when there's more than one
+  // payday to choose between, so the explanation can say whose it is.
+  const nextPayday = computed(() => {
+    const [soonest] = memberPaydayCountdowns.value
+    if (!soonest) return null
+    return {
+      daysUntil: soonest.daysUntil,
+      date: soonest.nextPayDate,
+      name: memberPaydayCountdowns.value.length > 1 ? soonest.name : undefined,
+    }
+  })
 
   const periodIncomeTotal = computed(() =>
     incomePaymentsStore.currentPeriodPayments.reduce((sum, payment) => sum + payment.amount, 0),
@@ -214,7 +216,7 @@ export function useBudgetRecommendation(providedCurrentPlan?: Ref<Plan | null>) 
 
   return {
     currentPeriod,
-    daysUntilMyPayday,
+    nextPayday,
     memberPaydayCountdowns,
     periodIncomeTotal,
     budgetRecommendation,
