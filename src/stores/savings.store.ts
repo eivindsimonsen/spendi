@@ -66,6 +66,15 @@ export const useSavingsStore = defineStore('savings', () => {
     return created
   }
 
+  async function removeContribution(goalId: string, id: string) {
+    await savingsContributionsService.delete(id)
+    const existing = contributionsByGoal.value.get(goalId) ?? []
+    contributionsByGoal.value.set(
+      goalId,
+      existing.filter((contribution) => contribution.id !== id),
+    )
+  }
+
   return {
     goals,
     contributionsByGoal,
@@ -75,5 +84,6 @@ export const useSavingsStore = defineStore('savings', () => {
     updateGoal,
     deleteGoal,
     addContribution,
+    removeContribution,
   }
 })

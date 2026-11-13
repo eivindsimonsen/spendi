@@ -92,7 +92,14 @@ const submitLabel = computed(() => {
     </label>
     <label class="form-field">
       Målbeløp (kr)
-      <input v-model.number="targetAmount" type="number" min="0" step="1" required />
+      <input
+        v-model.number="targetAmount"
+        type="number"
+        inputmode="numeric"
+        min="0"
+        step="1"
+        required
+      />
     </label>
     <label class="form-field">
       Måldato

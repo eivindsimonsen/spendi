@@ -16,8 +16,10 @@ import ExplainableValue from '@/components/common/ExplainableValue.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PlanPicker from '@/components/budget/PlanPicker.vue'
 import SavingsGoalForm from '@/components/savings/SavingsGoalForm.vue'
+import SwipeAction from '@/components/common/SwipeAction.vue'
 
 type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
+type SavingsContribution = Database['public']['Tables']['savings_contributions']['Row']
 
 const savingsStore = useSavingsStore()
 const plansStore = usePlansStore()
@@ -134,6 +136,16 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
   if (!confirmed) return
   await savingsStore.deleteGoal(goalId)
 }
+
+// Savings are the household's, not one person's (see the RLS policy), so
+// anyone in the plan can remove any contribution -- a partner's included.
+async function handleDeleteContribution(goal: SavingsGoal, contribution: SavingsContribution) {
+  const confirmed = window.confirm(
+    `Er du sikker på at du vil fjerne ${formatCurrencyNOK(contribution.amount)} fra "${goal.name}"?`,
+  )
+  if (!confirmed) return
+  await savingsStore.removeContribution(goal.id, contribution.id)
+}
 </script>
 
 <template>
@@ -211,18 +223,27 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
       </div>
 
       <template v-if="contributionsFor(goal.id).length">
-        <p class="section-eyebrow savings-history-heading">Sparehistorikk</p>
+        <div class="savings-history-heading">
+          <p class="section-eyebrow">Sparehistorikk</p>
+          <span class="savings-swipe-hint">← dra for å fjerne</span>
+        </div>
         <ul class="savings-history-list">
           <li
             v-for="contribution in contributionsFor(goal.id)"
             :key="contribution.id"
-            class="list-row-block"
+            class="savings-history-item"
           >
-            <p class="savings-history-line">
-              <strong>{{ nameFor(contribution.created_by) }}</strong> la til
-              {{ formatCurrencyNOK(contribution.amount) }} ·
-              {{ formatMonthName(new Date(contribution.occurred_on)) }}
-            </p>
+            <SwipeAction
+              label="Fjern"
+              danger
+              @action="handleDeleteContribution(goal, contribution)"
+            >
+              <p class="savings-history-line">
+                <strong>{{ nameFor(contribution.created_by) }}</strong> la til
+                {{ formatCurrencyNOK(contribution.amount) }} ·
+                {{ formatMonthName(new Date(contribution.occurred_on)) }}
+              </p>
+            </SwipeAction>
           </li>
         </ul>
       </template>
@@ -242,6 +263,7 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
           <input
             v-model.number="contributionAmount"
             type="number"
+            inputmode="numeric"
             min="0"
             step="1"
             required
@@ -397,8 +419,23 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
   margin-bottom: var(--space-2);
 }
 
+/* The swipe hint shares the heading's line instead of taking one of its
+   own, so it's there to find without cluttering every goal card. */
 .savings-history-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
   margin: var(--space-3) 0 var(--space-1);
+}
+
+.savings-history-heading .section-eyebrow {
+  margin: 0;
+}
+
+.savings-swipe-hint {
+  font-size: 0.7rem;
+  color: var(--color-text-subtle);
 }
 
 .savings-history-list {
@@ -407,8 +444,15 @@ async function handleDeleteGoal(goalId: string, goalName: string) {
   margin: 0;
 }
 
+.savings-history-item + .savings-history-item {
+  border-top: 1px solid var(--color-border);
+}
+
+/* The row's padding sits inside the swipe area rather than on the <li>,
+   so the red "Fjern" fills the whole row height when it's dragged. */
 .savings-history-line {
   margin: 0;
+  padding: var(--space-2) 0;
   font-size: 0.9rem;
 }
 

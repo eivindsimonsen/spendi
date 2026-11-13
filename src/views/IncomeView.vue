@@ -175,7 +175,15 @@ async function removePayment(id: string) {
       <form v-else class="form income-form" @submit.prevent="runSave()">
         <label class="form-field">
           Beløp (kr)
-          <input v-model.number="amount" type="number" min="0" step="1" required autofocus />
+          <input
+            v-model.number="amount"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            step="1"
+            required
+            autofocus
+          />
         </label>
         <label class="form-field">
           Type

@@ -28,7 +28,7 @@ const { loading, error, run } = useAsyncAction(async () => {
   <form class="form" @submit.prevent="run()">
     <label class="form-field">
       Hvilken dag i måneden får du lønn?
-      <input v-model.number="payday" type="number" min="1" max="31" required />
+      <input v-model.number="payday" type="number" inputmode="numeric" min="1" max="31" required />
     </label>
     <p class="form-hint">
       Vi bruker denne til å regne budsjettperioden fra lønningsdag til lønningsdag, i stedet for

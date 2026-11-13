@@ -32,7 +32,13 @@ export const usePlansStore = defineStore('plans', () => {
   // renders, so the user is always known by the time a view loads plans.
   async function loadMyPlans() {
     if (!authStore.user) return
-    myPlans.value = await plansService.listMine(authStore.user.id)
+    // Your own plans first, then the Spendiplans shared with a partner --
+    // each group keeps the service's oldest-first order.
+    const plans = await plansService.listMine(authStore.user.id)
+    myPlans.value = [
+      ...plans.filter((plan) => plan.type === 'individual'),
+      ...plans.filter((plan) => plan.type !== 'individual'),
+    ]
 
     const activeStillValid = myPlans.value.some((plan) => plan.id === activePlanId.value)
     if (!activeStillValid) {
